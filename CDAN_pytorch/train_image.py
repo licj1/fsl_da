@@ -85,6 +85,7 @@ def train(config):
                                 transform=prep_dict["source"])
     dset_loaders["source"] = DataLoader(dsets["source"], batch_size=train_bs, \
             shuffle=True, num_workers=4, drop_last=True)
+    #print(open(data_config["target"]["list_path"]).readlines())
     dsets["target"] = ImageList(open(data_config["target"]["list_path"]).readlines(), \
                                 transform=prep_dict["target"])
     dset_loaders["target"] = DataLoader(dsets["target"], batch_size=train_bs, \
@@ -107,6 +108,13 @@ def train(config):
     ## set base network
     net_config = config["network"]
     base_network = net_config["name"](**net_config["params"])
+    checkpoint = torch.load('mini.pth.tar')
+    model_dict = base_network.state_dict()
+    new_dict = {k.replace('module.',''): v for k, v in checkpoint['state_dict'].items() if (k.replace('module.','') in model_dict.keys() and 'fc' not in k)}
+    print(model_dict.keys(), new_dict.keys())
+    model_dict.update(new_dict)
+    base_network.load_state_dict(model_dict)
+
     base_network = base_network.cuda()
 
     ## add additional network for some methods
@@ -140,6 +148,7 @@ def train(config):
     ## train   
     len_train_source = len(dset_loaders["source"])
     len_train_target = len(dset_loaders["target"])
+    print(len_train_source, len_train_target)
     transfer_loss_value = classifier_loss_value = total_loss_value = 0.0
     best_acc = 0.0
     for i in range(config["num_iterations"]):
@@ -202,7 +211,7 @@ if __name__ == "__main__":
     parser.add_argument('--net', type=str, default='ResNet50', choices=["ResNet18", "ResNet34", "ResNet50", "ResNet101", "ResNet152", "VGG11", "VGG13", "VGG16", "VGG19", "VGG11BN", "VGG13BN", "VGG16BN", "VGG19BN", "AlexNet"])
     parser.add_argument('--dset', type=str, default='office', choices=['office', 'image-clef', 'visda', 'office-home', 'imagenet'], help="The dataset or source dataset used")
     parser.add_argument('--s_dset_path', type=str, default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/imagenet/list/train_list.txt', help="The source dataset path list")
-    parser.add_argument('--t_dset_path', type=str, default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/imagenet/list/test_transfer_20.txt', help="The target dataset path list")
+    parser.add_argument('--t_dset_path', type=str, default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet/test_transfer_5.txt', help="The target dataset path list")
     parser.add_argument('--test_interval', type=int, default=5000000000, help="interval of two continuous test phase")
     parser.add_argument('--snapshot_interval', type=int, default=5000, help="interval of two continuous output model")
     parser.add_argument('--output_dir', type=str, default='san', help="output directory of our model (in ../snapshot directory)")
@@ -248,7 +257,7 @@ if __name__ == "__main__":
                            "lr_param":{"lr":args.lr, "gamma":0.001, "power":0.75} }
 
     config["dataset"] = args.dset
-    config["data"] = {"source":{"list_path":args.s_dset_path, "batch_size":200}, \
+    config["data"] = {"source":{"list_path":args.s_dset_path, "batch_size":100}, \
                       "target":{"list_path":args.t_dset_path, "batch_size":8}, \
                       "test":{"list_path":args.t_dset_path, "batch_size":4}}
 
@@ -274,7 +283,7 @@ if __name__ == "__main__":
         config["network"]["params"]["class_num"] = 65
     elif config["dataset"] == "imagenet":
         config["optimizer"]["lr_param"]["lr"] = 0.001 # optimal parameters
-        config["network"]["params"]["class_num"] = 1000
+        config["network"]["params"]["class_num"] = 80
         config['loss']["trade_off"] = 1.0
     else:
         raise ValueError('Dataset cannot be recognized. Please define your own dataset here.')

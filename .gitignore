@@ -1,0 +1,5 @@
+CDAN_pytorch/snapshot/*
+CDAN_pytorch/__pycache__/*
+CDAN_pytorch/logs/*
+CDAN_pytorch/mini.pth.tar
+

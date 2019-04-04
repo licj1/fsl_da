@@ -25,7 +25,7 @@ def make_dataset(image_list, labels):
 
 
 def rgb_loader(path):
-    with open('/mnt/lustre/dingmingyu/Research/da_zsl/dataset/imagenet/' + path, 'rb') as f:
+    with open('/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet/' + path, 'rb') as f:
         with Image.open(f) as img:
             return img.convert('RGB')
 
