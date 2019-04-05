@@ -131,7 +131,7 @@ parser.add_argument('--lr', type=float, default=.005)
 parser.add_argument('--wd', type=float, default=0.0)
 parser.add_argument('--mom', type=float, default=0.0)
 parser.add_argument('--mode', default='val')
-parser.add_argument('--storemodel', type=str, default='lr_model_15.pth')
+parser.add_argument('--storemodel', type=str, default='lr_model_20.pth')
 parser.add_argument('--storeL', type=str, default='')
 
 
@@ -140,7 +140,7 @@ mode = opts.mode
 
 
 
-df=pd.read_csv('feature15.txt', header=None, sep=' ')
+df=pd.read_csv('feature5.txt', header=None, sep=' ')
 
 
 df = np.array(df)
@@ -151,7 +151,7 @@ Ytr = np.array(df[:,-1], dtype=np.int)
 print('load train')
 
 
-df=pd.read_csv('feature15_all.txt', header=None, sep=' ')
+df=pd.read_csv('feature5_all.txt', header=None, sep=' ')
 
 
 df = np.array(df)
@@ -164,7 +164,7 @@ print('load test')
 
 
 
-nclasses = 359
+nclasses = 20
 Xtr_orig = Xtr
 Xte_orig = Xte
 

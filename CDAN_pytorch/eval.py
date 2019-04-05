@@ -17,8 +17,6 @@ from torch.autograd import Variable
 import random
 import pdb
 import math
-
-
 from torchvision import models
 
 class ResNetFc(nn.Module):
@@ -109,7 +107,7 @@ def image_classification_test(loader, model, test_10crop=True):
     all_output = all_output.squeeze(2).squeeze(2).numpy()
     all_label = all_label.cpu().numpy()
     length = len(all_label)
-    f = open('feature15_all.txt','w')
+    f = open('feature20.txt','w')
     for i in range(length):
         line = all_output[i]
         for item in line:
@@ -169,7 +167,7 @@ def train(config):
     #base_network = base_network.cuda()
     #print(base_network)
     
-    base_network = torch.load('/mnt/lustre/dingmingyu/Research/da_zsl/CDAN/pytorch/snapshot/san_15/iter_90000_model.pth.tar')
+    base_network = torch.load('/mnt/lustre/dingmingyu/Research/da_zsl/fsl_da/CDAN_pytorch/snapshot/output_20/iter_70000_model.pth.tar')
     base_network= list(base_network.children())[0]
     base_network = base_network.module
 #     for key, value in base_network.state_dict().items():
@@ -300,7 +298,7 @@ if __name__ == "__main__":
         config["network"]["params"]["class_num"] = 65
     elif config["dataset"] == "imagenet":
         config["optimizer"]["lr_param"]["lr"] = 0.001 # optimal parameters
-        config["network"]["params"]["class_num"] = 1000
+        config["network"]["params"]["class_num"] = 80
         config['loss']["trade_off"] = 1.0
     else:
         raise ValueError('Dataset cannot be recognized. Please define your own dataset here.')
