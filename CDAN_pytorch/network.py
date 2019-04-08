@@ -184,11 +184,11 @@ def grl_hook(coeff):
     return fun1
 
 class ResNetFc(nn.Module):
-  def __init__(self, resnet_name, use_bottleneck=True, bottleneck_dim=256, new_cls=False, class_num=1000):
+  def __init__(self, resnet_name, use_bottleneck=True, bottleneck_dim=256, new_cls=False, class_num=1000, pretrained_model='tiered_checkpoint.pth.tar'):
     super(ResNetFc, self).__init__()
     model_resnet = resnet_dict[resnet_name](pretrained=True)
 
-    pretrained_dict = torch.load('tiered_checkpoint.pth.tar')['state_dict']
+    pretrained_dict = torch.load(pretrained_model)['state_dict']
     model_dict = model_resnet.state_dict()
     # 1. filter out unnecessary keys
     pretrained_dict = {k[7:]: v for k, v in pretrained_dict.items() if k[7:] in model_dict and not k[7:].startswith('fc')}
