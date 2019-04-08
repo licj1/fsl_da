@@ -25,6 +25,10 @@ class LambdaLearner(nn.Module):
         super(LambdaLearner, self).__init__()
         self.fc = nn.Linear(feature_dim, 1)
         self.sigmoid = nn.Sigmoid()
+    def forward(self, x):
+        out = self.fc(x)
+        out = self.sigmoid(out)
+        return out
 
 def image_classification_test(loader, model, test_10crop=True):
     start_test = True

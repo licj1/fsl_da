@@ -134,7 +134,6 @@ def train(config):
     ## train   
     len_train_source = len(dset_loaders["source"])
     len_train_target = len(dset_loaders["target"])
-    len_train_source_target = len(dset_loaders["source_target"])
     transfer_loss_value = classifier_loss_value = total_loss_value = 0.0
     best_acc = 0.0
     start = 0
@@ -251,6 +250,7 @@ if __name__ == "__main__":
     parser.add_argument('--query', type=int, default=15)
     parser.add_argument('--train-way', type=int, default=30)
     parser.add_argument('--test-way', type=int, default=5)
+    parser.add_argument('--prtained', type=str, default='tiered_checkpoint.pth.tar')
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     #os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
@@ -279,7 +279,7 @@ if __name__ == "__main__":
             "params":{"use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
     elif "ResNet" in args.net:
         config["network"] = {"name":network.ResNetFc, \
-            "params":{"resnet_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
+            "params":{"resnet_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True, "pretrained_model":args.pretrained} }
     elif "VGG" in args.net:
         config["network"] = {"name":network.VGGFc, \
             "params":{"vgg_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
