@@ -187,6 +187,17 @@ class ResNetFc(nn.Module):
   def __init__(self, resnet_name, use_bottleneck=True, bottleneck_dim=256, new_cls=False, class_num=1000):
     super(ResNetFc, self).__init__()
     model_resnet = resnet_dict[resnet_name](pretrained=True)
+
+    pretrained_dict = torch.load('tiered_checkpoint.pth.tar')['state_dict']
+    model_dict = model_resnet.state_dict()
+    # 1. filter out unnecessary keys
+    pretrained_dict = {k[7:]: v for k, v in pretrained_dict.items() if k[7:] in model_dict and not k[7:].startswith('fc')}
+    # 2. overwrite entries in the existing state dict
+    print pretrained_dict
+    model_dict.update(pretrained_dict)
+    # 3. load the new state dict
+    model_resnet.load_state_dict(model_dict)
+
     self.conv1 = model_resnet.conv1
     self.bn1 = model_resnet.bn1
     self.relu = model_resnet.relu
@@ -195,7 +206,7 @@ class ResNetFc(nn.Module):
     self.layer2 = model_resnet.layer2
     self.layer3 = model_resnet.layer3
     self.layer4 = model_resnet.layer4
-    self.avgpool = model_resnet.avgpool
+    self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
     self.feature_layers = nn.Sequential(self.conv1, self.bn1, self.relu, self.maxpool, \
                          self.layer1, self.layer2, self.layer3, self.layer4, self.avgpool)
 
