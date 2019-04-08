@@ -1,0 +1,1 @@
+python -u logreg.py --lr=0.005 --dataset=test_new_domain_miniimagenet --storemodel='test_5.pth' --nlabeled=5 --verbose=1000 --maxiter=20000

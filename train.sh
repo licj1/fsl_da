@@ -1,0 +1,1 @@
+python -u train_adddata.py --gpu_id 0 --net ResNet50 --dset tiered-imagenet --s_dset_path /disks/sdc/an_zhao/lab/cross-domain-fsl/dataset/tiered-imagenet/ --fsl_test_path /disks/sdc/an_zhao/lab/cross-domain-fsl/dataset/tiered-imagenet/ --shot 5 --train-way 5  
