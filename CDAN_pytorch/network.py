@@ -193,7 +193,7 @@ class ResNetFc(nn.Module):
     # 1. filter out unnecessary keys
     pretrained_dict = {k[7:]: v for k, v in pretrained_dict.items() if k[7:] in model_dict and not k[7:].startswith('fc')}
     # 2. overwrite entries in the existing state dict
-    print pretrained_dict
+    print(pretrained_dict)
     model_dict.update(pretrained_dict)
     # 3. load the new state dict
     model_resnet.load_state_dict(model_dict)

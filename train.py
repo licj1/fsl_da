@@ -226,7 +226,7 @@ def train(config):
         if i % 1 == 0:
             print('iter: ', i, 'transfer_loss: ', transfer_loss.data, 'fsl_loss: ', fsl_loss.data, 'fsl_acc: ', fsl_acc)
         total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
-        print total_loss
+        print(total_loss)
         total_loss.backward()
         optimizer.step()
     torch.save(best_model, osp.join(config["output_path"], "best_model.pth.tar"))
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     parser.add_argument('--query', type=int, default=15)
     parser.add_argument('--train-way', type=int, default=30)
     parser.add_argument('--test-way', type=int, default=5)
-    parser.add_argument('--prtained', type=str, default='tiered_checkpoint.pth.tar')
+    parser.add_argument('--pretrained', type=str, default='tiered_checkpoint.pth.tar')
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     #os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
