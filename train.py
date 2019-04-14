@@ -18,6 +18,19 @@ import random
 import pdb
 import math
 from prototypical_network_pytorch.utils import pprint, set_gpu, ensure_path, Averager, Timer, count_acc, euclidean_metric
+from torch.autograd import Variable
+from torch.nn.parameter import Parameter
+
+
+class learnedweight(nn.Module):
+    def __init__(self):
+        super(learnedweight, self).__init__()
+        self.fsl_weight = Parameter(torch.ones(1), requires_grad=True)
+        self.da_weight = Parameter(torch.ones(1), requires_grad=True)
+    
+    def forward(self, fsl_loss, da_loss):
+        final_loss = self.fsl_weight + torch.exp(-1 * self.fsl_weight)*fsl_loss + self.da_weight + torch.exp(-1 * self.da_weight)*da_loss
+        return final_loss
 
 def image_classification_test(loader, model, test_10crop=True):
     start_test = True
@@ -113,7 +126,10 @@ def train(config):
     if config["loss"]["random"]:
         random_layer.cuda()
     ad_net = ad_net.cuda()
-    parameter_list = base_network.get_parameters() + ad_net.get_parameters()
+    autoweight = learnedweight().cuda()
+    #print(base_network.get_parameters())
+    #print([{'params': autoweight.parameters(), 'lr_mult': 1, 'decay_mult': 2}])
+    parameter_list = base_network.get_parameters() + ad_net.get_parameters()  + [{'params': autoweight.parameters(), 'lr_mult': 1, 'decay_mult': 2}]
  
     ## set optimizer
     optimizer_config = config["optimizer"]
@@ -129,6 +145,7 @@ def train(config):
     if len(gpus) > 1:
         ad_net = nn.DataParallel(ad_net, device_ids=[int(i) for i in gpus])
         base_network = nn.DataParallel(base_network, device_ids=[int(i) for i in gpus])
+        autoweight = nn.DataParallel(autoweight, device_ids=[int(i) for i in gpus])
         
 
     ## train   
@@ -225,7 +242,8 @@ def train(config):
 
         if i % 1 == 0:
             print('iter: ', i, 'transfer_loss: ', transfer_loss.data, 'fsl_loss: ', fsl_loss.data, 'fsl_acc: ', fsl_acc)
-        total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
+       # total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
+        total_loss = autoweight(fsl_loss, transfer_loss)/10
         print(total_loss)
         total_loss.backward()
         optimizer.step()
@@ -243,7 +261,7 @@ if __name__ == "__main__":
     parser.add_argument('--fsl_test_path', type=str, default='/disks/sdd/an_zhao/lab/cross-domain-fsl/dataset/mini-imagenet/test_new_domain', help="The dataset path")
     parser.add_argument('--test_interval', type=int, default=10000, help="interval of two continuous test phase")
     parser.add_argument('--snapshot_interval', type=int, default=500, help="interval of two continuous output model")
-    parser.add_argument('--output_dir', type=str, default='san', help="output directory of our model (in ../snapshot directory)")
+    parser.add_argument('--output_dir', type=str, default='san_auto_weight10', help="output directory of our model (in ../snapshot directory)")
     parser.add_argument('--lr', type=float, default=0.0005, help="learning rate")
     parser.add_argument('--random', type=bool, default=False, help="whether use random projection")
     parser.add_argument('--shot', type=int, default=1)

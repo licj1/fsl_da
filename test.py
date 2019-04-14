@@ -12,7 +12,7 @@ from prototypical_network_pytorch.utils import pprint, set_gpu, count_acc, Avera
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', default='0,1,2,3')
-    parser.add_argument('--load', default='snapshot/san/iter_09500_model.pth.tar')
+    parser.add_argument('--load', default='snapshot/san_devide10/iter_09500_model.pth.tar')
     parser.add_argument('--batch', type=int, default=2000)
     parser.add_argument('--way', type=int, default=20)
     parser.add_argument('--shot', type=int, default=5)
