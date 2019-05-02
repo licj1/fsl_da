@@ -12,19 +12,19 @@ from prototypical_network_pytorch.utils import pprint, set_gpu, count_acc, Avera
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', default='0,1,2,3')
-    parser.add_argument('--load', default='snapshot/san_devide10/iter_09500_model.pth.tar')
+    parser.add_argument('--load', default='snapshot/mini_auto_weight10/iter_09500_model.pth.tar')
     parser.add_argument('--batch', type=int, default=2000)
-    parser.add_argument('--way', type=int, default=20)
+    parser.add_argument('--way', type=int, default=5)
     parser.add_argument('--shot', type=int, default=5)
     parser.add_argument('--query', type=int, default=30) 
-    parser.add_argument('--root', default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/')
+    parser.add_argument('--root', default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet/')
     args = parser.parse_args()
     pprint(vars(args))
 
     set_gpu(args.gpu)
 
     # dataset = MiniImageNet('test')
-    dataset = MiniImageNet(root=args.root, dataset='tiered-imagenet', mode='test_new_domain_fsl')
+    dataset = MiniImageNet(root=args.root, dataset='mini-imagenet', mode='test_new_domain_fsl')
     sampler = CategoriesSampler(dataset.label,
                                 args.batch, args.way, args.shot + args.query)
     loader = DataLoader(dataset, batch_sampler=sampler,

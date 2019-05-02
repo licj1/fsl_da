@@ -261,7 +261,7 @@ if __name__ == "__main__":
     parser.add_argument('--fsl_test_path', type=str, default='/disks/sdd/an_zhao/lab/cross-domain-fsl/dataset/mini-imagenet/test_new_domain', help="The dataset path")
     parser.add_argument('--test_interval', type=int, default=10000, help="interval of two continuous test phase")
     parser.add_argument('--snapshot_interval', type=int, default=500, help="interval of two continuous output model")
-    parser.add_argument('--output_dir', type=str, default='san_auto_weight10', help="output directory of our model (in ../snapshot directory)")
+    parser.add_argument('--output_dir', type=str, default='mini_auto_weight10', help="output directory of our model (in ../snapshot directory)")
     parser.add_argument('--lr', type=float, default=0.0005, help="learning rate")
     parser.add_argument('--random', type=bool, default=False, help="whether use random projection")
     parser.add_argument('--shot', type=int, default=1)
