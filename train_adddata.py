@@ -145,6 +145,7 @@ def train(config):
     len_train_target = len(dset_loaders["target"])
     len_train_fsl_target = len(dset_loaders["fsl_target"])
     len_train_da_source = len(dset_loaders["da_source"])
+    print (len_train_source, len_train_target, len_train_fsl_target, len_train_da_source)
     transfer_loss_value = classifier_loss_value = total_loss_value = 0.0
     best_acc = 0.0
     start = 0
@@ -279,11 +280,10 @@ def train(config):
                 raise ValueError('Method cannot be recognized.')
         
         
-
-        if i % 1 == 0:
-            print('iter: ', i, 'transfer_loss: ', transfer_loss.data, 'fsl_loss: ', fsl_loss.data, 'fsl_acc: ', fsl_acc)
         total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
-        print total_loss
+        if i % 1 == 0:
+            print('iter: ', i, 'transfer_loss: ', transfer_loss.item(), 'fsl_loss: ', fsl_loss.item(), 'fsl_acc: ', fsl_acc, 'total_loss: ', total_loss.item())
+
         total_loss.backward()
         optimizer.step()
     torch.save(best_model, osp.join(config["output_path"], "best_model.pth.tar"))
@@ -307,6 +307,7 @@ if __name__ == "__main__":
     parser.add_argument('--query', type=int, default=15)
     parser.add_argument('--train-way', type=int, default=30)
     parser.add_argument('--test-way', type=int, default=5)
+    parser.add_argument('--pretrained', type=str, default='tiered_checkpoint.pth.tar')
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     #os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
@@ -335,7 +336,7 @@ if __name__ == "__main__":
             "params":{"use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
     elif "ResNet" in args.net:
         config["network"] = {"name":network.ResNetFc, \
-            "params":{"resnet_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
+            "params":{"resnet_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True, "pretrained_model":args.pretrained} }
     elif "VGG" in args.net:
         config["network"] = {"name":network.VGGFc, \
             "params":{"vgg_name":args.net, "use_bottleneck":True, "bottleneck_dim":256, "new_cls":True} }
