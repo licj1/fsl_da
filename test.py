@@ -43,7 +43,7 @@ if __name__ == '__main__':
     model.eval()
 
     ave_acc = Averager()
-    var = []
+    test_accuracies = []
     for i, batch in enumerate(loader, 1):
         data, _ = [_.cuda() for _ in batch]
         k = args.way * args.shot
@@ -60,9 +60,11 @@ if __name__ == '__main__':
         label = label.type(torch.cuda.LongTensor)
 
         acc = count_acc(logits, label)
-        var.append(acc)
-        ave_acc.add(acc)
-        print('batch {}: {:.2f}({:.2f}), var: {:.3f}'.format(i, ave_acc.item() * 100, acc * 100, np.array(var).var()))
+        test_accuracies.append(acc)
         
+        avg = np.mean(np.array(test_accuracies))
+        std = np.std(np.array(test_accuracies))
+        ci95 = 1.96 * std / np.sqrt(i + 1)
+        print('batch {}: Accuracy: {:.4f} +- {:.4f} % ({:.4f} %)'.format(i, avg, ci95, acc))
         x = None; p = None; logits = None
 
