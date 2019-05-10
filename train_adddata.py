@@ -151,6 +151,7 @@ def train(config):
     start = 0
     num_fsl_target = 0
     num = 0
+    train_da_source_num = 0
     for i in range(config["num_iterations"]):
         if i % config["test_interval"] == config["test_interval"] - 1:
             base_network.train(False)
@@ -201,11 +202,12 @@ def train(config):
             iter_fsl_train_target = iter(dset_loaders["fsl_target"])
             num += 1
         
-        if (num * len_train_fsl_target) % len_train_da_source == 0:
+        if train_da_source_num % len_train_da_source == 0:
+
             iter_da_source = iter(dset_loaders["da_source"])
         # if i % len_train_source == 0:
         #     iter_fsl_train = iter(dset_loaders["source"])
-        if i % len_train_target == 0:
+        if (i - start) % len_train_target == 0:
             iter_target = iter(dset_loaders["target"])
         
         if i - start < len_train_source:
@@ -224,6 +226,7 @@ def train(config):
 
             label = torch.arange(config["train_way"]).repeat(config["query"])
             label = label.type(torch.cuda.LongTensor)
+
             query_proto, _ = base_network(data_query)
             logits = euclidean_metric(query_proto, proto)
             # fsl_loss = F.cross_entropy(logits, label)
@@ -246,6 +249,7 @@ def train(config):
 
         else:
             inputs_source, labels_source = iter_da_source.next()
+            train_da_source_num += 1
             inputs_fsl, labels_fsl = iter_fsl_train_target.next()
             inputs_source = inputs_source.cuda()
             inputs_fsl, labels_fsl = inputs_fsl.cuda(), labels_fsl.cuda()
