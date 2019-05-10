@@ -229,6 +229,7 @@ def train(config):
 
             query_proto, _ = base_network(data_query)
             logits = euclidean_metric(query_proto, proto)
+            print(proto.size(),logits.size(),label.size())
             # fsl_loss = F.cross_entropy(logits, label)
             fsl_loss = nn.CrossEntropyLoss()(logits, label)
             fsl_acc = count_acc(logits, label)
@@ -266,6 +267,7 @@ def train(config):
             label = label.type(torch.cuda.LongTensor)
             query_proto, _ = base_network(data_query)
             logits = euclidean_metric(query_proto, proto)
+            print(query_proto.size(), proto.size(),logits.size())
             # fsl_loss = F.cross_entropy(logits, label)
             fsl_loss = nn.CrossEntropyLoss()(logits, label)
             fsl_acc = count_acc(logits, label)
