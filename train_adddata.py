@@ -18,7 +18,20 @@ import random
 import pdb
 import math
 from prototypical_network_pytorch.utils import pprint, set_gpu, ensure_path, Averager, Timer, count_acc, euclidean_metric
+from torch.autograd import Variable
+from torch.nn.parameter import Parameter
 
+class learnedweight(nn.Module):
+    def __init__(self):
+        super(learnedweight, self).__init__()
+        self.fsl_weight = Parameter(torch.ones(1), requires_grad=True)
+        self.da_weight = Parameter(torch.ones(1), requires_grad=True)
+    
+    def forward(self, fsl_loss, da_loss):
+        final_loss = self.fsl_weight + torch.exp(-1 * self.fsl_weight)*fsl_loss + self.da_weight + torch.exp(-1 * self.da_weight)*da_loss
+        return final_loss
+    
+    
 def image_classification_test(loader, model, test_10crop=True):
     start_test = True
     with torch.no_grad():
@@ -111,7 +124,7 @@ def train(config):
     net_config = config["network"]
     base_network = net_config["name"](**net_config["params"])
     base_network = base_network.cuda()
-
+    autoweight = learnedweight().cuda()
     ## add additional network for some methods
     if config["loss"]["random"]:
         random_layer = network.RandomLayer([base_network.output_num(), class_num], config["loss"]["random_dim"])
@@ -122,7 +135,7 @@ def train(config):
     if config["loss"]["random"]:
         random_layer.cuda()
     ad_net = ad_net.cuda()
-    parameter_list = base_network.get_parameters() + ad_net.get_parameters()
+    parameter_list = base_network.get_parameters() + ad_net.get_parameters() + [{'params': autoweight.parameters(), 'lr_mult': 1, 'decay_mult': 2}]
  
     ## set optimizer
     optimizer_config = config["optimizer"]
@@ -138,6 +151,7 @@ def train(config):
     if len(gpus) > 1:
         ad_net = nn.DataParallel(ad_net, device_ids=[int(i) for i in gpus])
         base_network = nn.DataParallel(base_network, device_ids=[int(i) for i in gpus])
+        autoweight = nn.DataParallel(autoweight, device_ids=[int(i) for i in gpus])
         
 
     ## train   
@@ -286,7 +300,8 @@ def train(config):
                 raise ValueError('Method cannot be recognized.')
         
         
-        total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
+        #total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
+        total_loss = autoweight(fsl_loss, transfer_loss)/10
         if i % 1 == 0:
             print('iter: ', i, 'transfer_loss: ', transfer_loss.item(), 'fsl_loss: ', fsl_loss.item(), 'fsl_acc: ', fsl_acc, 'total_loss: ', total_loss.item())
 
@@ -358,6 +373,12 @@ if __name__ == "__main__":
                       "target":{"root":args.s_dset_path, "split":"val_new_domain", "batch_size":8}, \
                       "test":{"root":args.s_dset_path, "split":"val_new_domain", "batch_size":4}, \
                       "fsl_test":{"root":args.fsl_test_path, "split":"val_new_domain_fsl", "batch_size":4}}
+
+#                     "target":{"root":args.s_dset_path, "split":"val_source_domain", "batch_size":8}, \
+#                      "test":{"root":args.s_dset_path, "split":"val_source_domain", "batch_size":4}, \
+#                      "fsl_test":{"root":args.fsl_test_path, "split":"val", "batch_size":4}}
+
+
 
     if config["dataset"] == "office":
         if ("amazon" in args.s_dset_path and "webcam" in args.t_dset_path) or \
