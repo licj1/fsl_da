@@ -102,7 +102,13 @@ def validate(tX, tlabels, model):
     yhat = model(x)
     classes = int(yhat.size()[1])
     all_acc = 0
+    last_all_acc = 0
+    query = 30
+    acc_list = []
     for index in range(N):
+        if index % query ==0 and index != 0:
+            acc_list.append(float(all_acc - last_all_acc)/30)
+            last_all_acc = all_acc
         flag = 1
         choice = [random.randint(0,classes-1) for _ in range(opts.way-1)]
         for cate in choice:
@@ -110,11 +116,16 @@ def validate(tX, tlabels, model):
                 flag = 0
         all_acc += flag
     print(all_acc/float(N))
+    print('mean: ', np.mean(np.array(acc_list)))
+    print('std: ', np.std(np.array(acc_list)))
+    ci95 = 1.96 * np.std(np.array(acc_list)) / np.sqrt(index/30 + 1)
+    print('ci95', ci95)
     #values, indices = torch.max(yhat, 1)
     #indices = indices.data.numpy()
     #print(indices.shape, tlabels.shape)
     #print('###################  acc is : ', sum(indices==tlabels)/len(tlabels))
-    return all_acc/float(N) #sum(indices==tlabels)/len(tlabels)
+    return all_acc/float(N) 
+    #return sum(indices==tlabels)/len(tlabels)
 
 class Net(nn.Module):
     def __init__(self, d, nclasses):
@@ -142,9 +153,9 @@ parser.add_argument('--lr', type=float, default=.005)
 parser.add_argument('--wd', type=float, default=0.0)
 parser.add_argument('--mom', type=float, default=0.0)
 parser.add_argument('--mode', default='val')
-parser.add_argument('--storemodel', type=str, default='lr_model_5_tiered.pth')
+parser.add_argument('--storemodel', type=str, default='lr_model_5.pth')
 parser.add_argument('--storeL', type=str, default='')
-parser.add_argument('--way', type=int, default=5)
+parser.add_argument('--way', type=int, default=6)
 
 
 opts = parser.parse_args()
@@ -152,7 +163,7 @@ mode = opts.mode
 
 
 
-df=pd.read_csv('feature5_tiered.txt', header=None, sep=' ')
+df=pd.read_csv('dann_tiered_5.txt', header=None, sep=' ')
 
 
 df = np.array(df)
@@ -163,7 +174,7 @@ Ytr = np.array(df[:,-1], dtype=np.int)
 print('load train')
 
 
-df=pd.read_csv('feature5_tiered_50.txt', header=None, sep=' ')
+df=pd.read_csv('dann_tiered_50.txt', header=None, sep=' ')
 
 
 df = np.array(df)
@@ -177,6 +188,7 @@ print('load test')
 
 
 nclasses = 160
+#nclasses = 20
 Xtr_orig = Xtr
 Xte_orig = Xte
 
