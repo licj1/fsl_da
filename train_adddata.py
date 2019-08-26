@@ -124,6 +124,7 @@ def train(config):
     net_config = config["network"]
     base_network = net_config["name"](**net_config["params"])
     base_network = base_network.cuda()
+    print(base_network)
     autoweight = learnedweight().cuda()
     ## add additional network for some methods
     if config["loss"]["random"]:

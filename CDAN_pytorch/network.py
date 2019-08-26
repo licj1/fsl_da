@@ -6,6 +6,8 @@ from torchvision import models
 from torch.autograd import Variable
 import math
 import pdb
+from CDAN_pytorch.res12 import resnet12
+
 
 def calc_coeff(iter_num, high=1.0, low=0.0, alpha=10.0, max_iter=10000.0):
     return np.float(2.0 * (high - low) / (1.0 + np.exp(-alpha*iter_num / max_iter)) - (high - low) + low)
@@ -186,45 +188,41 @@ def grl_hook(coeff):
 class ResNetFc(nn.Module):
   def __init__(self, resnet_name, use_bottleneck=True, bottleneck_dim=256, new_cls=False, class_num=1000, pretrained_model='tiered_checkpoint.pth.tar'):
     super(ResNetFc, self).__init__()
-    model_resnet = resnet_dict[resnet_name](pretrained=True)
+    
+    model_resnet = resnet12(avg_pool=True, drop_rate=0.1, dropblock_size=5, classes=class_num)
 
     pretrained_dict = torch.load(pretrained_model)['state_dict']
     model_dict = model_resnet.state_dict()
     # 1. filter out unnecessary keys
-    pretrained_dict = {k[7:]: v for k, v in pretrained_dict.items() if k[7:] in model_dict and not k[7:].startswith('fc')}
+    pretrained_dict = {k[7:]: v for k, v in pretrained_dict.items() if k[7:] in model_dict and not k[7:].startswith('cls')}
     # 2. overwrite entries in the existing state dict
-    print(pretrained_dict)
+    print(pretrained_dict.keys(), model_dict.keys())
     model_dict.update(pretrained_dict)
     # 3. load the new state dict
     model_resnet.load_state_dict(model_dict)
 
-    self.conv1 = model_resnet.conv1
-    self.bn1 = model_resnet.bn1
-    self.relu = model_resnet.relu
-    self.maxpool = model_resnet.maxpool
     self.layer1 = model_resnet.layer1
     self.layer2 = model_resnet.layer2
     self.layer3 = model_resnet.layer3
     self.layer4 = model_resnet.layer4
     self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-    self.feature_layers = nn.Sequential(self.conv1, self.bn1, self.relu, self.maxpool, \
-                         self.layer1, self.layer2, self.layer3, self.layer4, self.avgpool)
+    self.feature_layers = nn.Sequential(self.layer1, self.layer2, self.layer3, self.layer4, self.avgpool)
 
     self.use_bottleneck = use_bottleneck
     self.new_cls = new_cls
     if new_cls:
         if self.use_bottleneck:
-            self.bottleneck = nn.Linear(model_resnet.fc.in_features, bottleneck_dim)
+            self.bottleneck = nn.Linear(model_resnet.cls.in_features, bottleneck_dim)
             self.fc = nn.Linear(bottleneck_dim, class_num)
             self.bottleneck.apply(init_weights)
             self.fc.apply(init_weights)
             self.__in_features = bottleneck_dim
         else:
-            self.fc = nn.Linear(model_resnet.fc.in_features, class_num)
+            self.fc = nn.Linear(model_resnet.cls.in_features, class_num)
             self.fc.apply(init_weights)
-            self.__in_features = model_resnet.fc.in_features
+            self.__in_features = model_resnet.cls.in_features
     else:
-        self.fc = model_resnet.fc
+        self.fc = model_resnet.cls
         self.__in_features = model_resnet.fc.in_features
 
   def forward(self, x):
