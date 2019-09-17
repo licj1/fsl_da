@@ -12,20 +12,19 @@ from prototypical_network_pytorch.utils import pprint, set_gpu, count_acc, Avera
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', default='0,1,2,3')
-    parser.add_argument('--load', default='snapshot/mini_add_16/iter_09500_model.pth.tar')
+    parser.add_argument('--load', default='snapshot/tiered_5shot_5way_res12_addloss_block3/iter_09000_model.pth.tar')
     parser.add_argument('--batch', type=int, default=2000)
     parser.add_argument('--way', type=int, default=5)
     parser.add_argument('--shot', type=int, default=5)
     parser.add_argument('--query', type=int, default=30) 
-    parser.add_argument('--root', default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet/')
+    parser.add_argument('--root', default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/')
     args = parser.parse_args()
     pprint(vars(args))
 
     set_gpu(args.gpu)
 
-    # dataset = MiniImageNet('test')
-    dataset = MiniImageNet(root=args.root, dataset='mini-imagenet', mode='test_new_domain_fsl') #transfer
-    #dataset = MiniImageNet(root=args.root, dataset='mini-imagenet', mode='test') #origin
+    dataset = MiniImageNet(root=args.root, dataset='tiered-imagenet', mode='test_new_domain_fsl') #transfer
+    #dataset = MiniImageNet(root=args.root, dataset='tiered-imagenet', mode='test') #origin
     sampler = CategoriesSampler(dataset.label,
                                 args.batch, args.way, args.shot + args.query)
     loader = DataLoader(dataset, batch_sampler=sampler,
@@ -50,11 +49,11 @@ if __name__ == '__main__':
         k = args.way * args.shot
         data_shot, data_query = data[:k], data[k:]
 
-        x, _ = model(data_shot)
+        _, x, _ = model(data_shot)
         x = x.reshape(args.shot, args.way, -1).mean(dim=0)
         p = x
 
-        proto_query, _ = model(data_query)
+        _, proto_query, _ = model(data_query)
         logits = euclidean_metric(proto_query, p)
 
         label = torch.arange(args.way).repeat(args.query)

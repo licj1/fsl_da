@@ -206,7 +206,8 @@ class ResNetFc(nn.Module):
     self.layer3 = model_resnet.layer3
     self.layer4 = model_resnet.layer4
     self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-    self.feature_layers = nn.Sequential(self.layer1, self.layer2, self.layer3, self.layer4, self.avgpool)
+    self.feature_layers_1 = nn.Sequential(self.layer1, self.layer2, self.layer3)
+    self.feature_layers_2 = nn.Sequential(self.layer4, self.avgpool)
 
     self.use_bottleneck = use_bottleneck
     self.new_cls = new_cls
@@ -226,12 +227,18 @@ class ResNetFc(nn.Module):
         self.__in_features = model_resnet.fc.in_features
 
   def forward(self, x):
-    x = self.feature_layers(x)
+    x = self.feature_layers_1(x)
+    xx = self.avgpool(x)
+    xx = xx.view(xx.size(0), -1)
+    x = self.feature_layers_2(x)
     x = x.view(x.size(0), -1)
     if self.use_bottleneck and self.new_cls:
-        x = self.bottleneck(x)
-    y = self.fc(x)
-    return x, y
+        bottleneck = self.bottleneck(x)
+        y = self.fc(bottleneck)
+    else:
+        bottleneck = 0
+        y = self.fc(x)
+    return xx, bottleneck, y
 
   def output_num(self):
     return self.__in_features
@@ -239,12 +246,14 @@ class ResNetFc(nn.Module):
   def get_parameters(self):
     if self.new_cls:
         if self.use_bottleneck:
-            parameter_list = [{"params":self.feature_layers.parameters(), "lr_mult":1, 'decay_mult':2}, \
-                            {"params":self.bottleneck.parameters(), "lr_mult":10, 'decay_mult':2}, \
-                            {"params":self.fc.parameters(), "lr_mult":10, 'decay_mult':2}]
+            parameter_list = [{"params":self.feature_layers_1.parameters(), "lr_mult":1, 'decay_mult':2}, \
+                            {"params":self.feature_layers_2.parameters(), "lr_mult":1, 'decay_mult':2}, \
+                              {"params":self.bottleneck.parameters(), "lr_mult":10, 'decay_mult':2}, \
+                              {"params":self.fc.parameters(), "lr_mult":10, 'decay_mult':2}]
         else:
-            parameter_list = [{"params":self.feature_layers.parameters(), "lr_mult":1, 'decay_mult':2}, \
-                            {"params":self.fc.parameters(), "lr_mult":10, 'decay_mult':2}]
+            parameter_list = [{"params":self.feature_layers_1.parameters(), "lr_mult":1, 'decay_mult':2}, \
+                              {"params": self.feature_layers_2.parameters(), "lr_mult": 1, 'decay_mult': 2}, \
+                              {"params":self.fc.parameters(), "lr_mult":10, 'decay_mult':2}]
     else:
         parameter_list = [{"params":self.parameters(), "lr_mult":1, 'decay_mult':2}]
     return parameter_list
