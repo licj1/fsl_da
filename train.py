@@ -458,7 +458,7 @@ if __name__ == "__main__":
             "params": {
                 "resnet_name": args.net,
                 "use_bottleneck": True,
-                "bottleneck_dim": 320,
+                "bottleneck_dim": 640,
                 "new_cls": True,
                 "pretrained_model": args.pretrained}}
     elif "VGG" in args.net:

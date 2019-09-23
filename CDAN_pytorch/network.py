@@ -213,9 +213,11 @@ class ResNetFc(nn.Module):
     self.new_cls = new_cls
     if new_cls:
         if self.use_bottleneck:
-            self.bottleneck = nn.Linear(model_resnet.cls.in_features, bottleneck_dim)
+            self.bottleneck = nn.Linear(model_resnet.cls.in_features, 256)
+            self.bottleneck_new = nn.Linear(256, bottleneck_dim)
             self.fc = nn.Linear(bottleneck_dim, class_num)
             self.bottleneck.apply(init_weights)
+            self.bottleneck_new.apply(init_weights)
             self.fc.apply(init_weights)
             self.__in_features = bottleneck_dim
         else:
@@ -228,17 +230,16 @@ class ResNetFc(nn.Module):
 
   def forward(self, x):
     x = self.feature_layers_1(x)
-    xx = self.avgpool(x)
-    xx = xx.view(xx.size(0), -1)
     x = self.feature_layers_2(x)
     x = x.view(x.size(0), -1)
     if self.use_bottleneck and self.new_cls:
         bottleneck = self.bottleneck(x)
-        y = self.fc(bottleneck)
+        bottleneck_new = self.bottleneck_new(bottleneck)
+        y = self.fc(bottleneck_new)
     else:
-        bottleneck = 0
+        bottleneck_new = 0
         y = self.fc(x)
-    return xx, bottleneck, y
+    return x, bottleneck_new, y
 
   def output_num(self):
     return self.__in_features
@@ -249,6 +250,7 @@ class ResNetFc(nn.Module):
             parameter_list = [{"params":self.feature_layers_1.parameters(), "lr_mult":1, 'decay_mult':2}, \
                             {"params":self.feature_layers_2.parameters(), "lr_mult":1, 'decay_mult':2}, \
                               {"params":self.bottleneck.parameters(), "lr_mult":10, 'decay_mult':2}, \
+                              {"params":self.bottleneck_new.parameters(), "lr_mult":10, 'decay_mult':2}, \
                               {"params":self.fc.parameters(), "lr_mult":10, 'decay_mult':2}]
         else:
             parameter_list = [{"params":self.feature_layers_1.parameters(), "lr_mult":1, 'decay_mult':2}, \

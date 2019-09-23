@@ -6,36 +6,50 @@ from torch.utils.data import DataLoader
 import numpy as np
 from data_loader import *
 import CDAN_pytorch.network as network
-from prototypical_network_pytorch.utils import pprint, set_gpu, count_acc, Averager, euclidean_metric
+from prototypical_network_pytorch.utils import (
+    pprint,
+    set_gpu,
+    count_acc,
+    Averager,
+    euclidean_metric,
+)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu', default='0,1,2,3')
-    parser.add_argument('--load', default='snapshot/tiered_5shot_5way_res12_addloss_block3/iter_09000_model.pth.tar')
-    parser.add_argument('--batch', type=int, default=2000)
-    parser.add_argument('--way', type=int, default=5)
-    parser.add_argument('--shot', type=int, default=5)
-    parser.add_argument('--query', type=int, default=30) 
-    parser.add_argument('--root', default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/')
+    parser.add_argument("--gpu", default="0,1,2,3")
+    parser.add_argument(
+        "--load",
+        default="snapshot/tiered_1shot_8way_res12_addloss_fc/iter_09500_model.pth.tar",
+    )
+    parser.add_argument("--batch", type=int, default=2000)
+    parser.add_argument("--way", type=int, default=5)
+    parser.add_argument("--shot", type=int, default=5)
+    parser.add_argument("--query", type=int, default=30)
+    parser.add_argument(
+        "--root",
+        default="/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/",
+    )
     args = parser.parse_args()
     pprint(vars(args))
 
     set_gpu(args.gpu)
 
-    dataset = MiniImageNet(root=args.root, dataset='tiered-imagenet', mode='test_new_domain_fsl') #transfer
-    #dataset = MiniImageNet(root=args.root, dataset='tiered-imagenet', mode='test') #origin
-    sampler = CategoriesSampler(dataset.label,
-                                args.batch, args.way, args.shot + args.query)
-    loader = DataLoader(dataset, batch_sampler=sampler,
-                        num_workers=8, pin_memory=True)
+    dataset = MiniImageNet(
+        root=args.root, dataset="tiered-imagenet", mode="test_new_domain_fsl"
+    )  # transfer
+    # dataset = MiniImageNet(root=args.root, dataset='tiered-imagenet', mode='test') #origin
+    sampler = CategoriesSampler(
+        dataset.label, args.batch, args.way, args.shot + args.query
+    )
+    loader = DataLoader(dataset, batch_sampler=sampler, num_workers=8, pin_memory=True)
 
     # model = Convnet().cuda()
     model = torch.load(args.load)
     # model= list(model.children())[0]
     # model = model.module
-#     for key, value in base_network.state_dict().items():
-#         print(key)
+    #     for key, value in base_network.state_dict().items():
+    #         print(key)
     # model = list(model.children())[9].cuda()
     # base_network= torch.nn.Sequential(*list(base_network.children())[:-1]).cuda()
     model = nn.DataParallel(model)
@@ -61,10 +75,15 @@ if __name__ == '__main__':
 
         acc = count_acc(logits, label)
         test_accuracies.append(acc)
-        
+
         avg = np.mean(np.array(test_accuracies))
         std = np.std(np.array(test_accuracies))
         ci95 = 1.96 * std / np.sqrt(i + 1)
-        print('batch {}: Accuracy: {:.4f} +- {:.4f} % ({:.4f} %)'.format(i, avg, ci95, acc))
-        x = None; p = None; logits = None
-
+        print(
+            "batch {}: Accuracy: {:.4f} +- {:.4f} % ({:.4f} %)".format(
+                i, avg, ci95, acc
+            )
+        )
+        x = None
+        p = None
+        logits = None
