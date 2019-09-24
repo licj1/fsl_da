@@ -167,3 +167,4 @@ venv.bak/
 output
 
 snapshot/
+pretrain/log.txt

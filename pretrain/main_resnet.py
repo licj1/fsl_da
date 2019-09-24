@@ -1,6 +1,7 @@
 import shutil
 import time
 import argparse
+import math
 
 import torch
 import torch.nn as nn
@@ -16,8 +17,8 @@ from resnet import ResNetFc
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dir_path', default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/')
-parser.add_argument('--arch', default='resnet50',
-                    choices=['resnet34', 'resnet50', 'resnet101', 'resnet152'])
+parser.add_argument('--arch', default='resnet18',
+                    choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'])
 parser.add_argument('--workers', default=32, type=int, metavar='N',
                     help='number of data loading workers (default: 8)')
 parser.add_argument('--epochs', default=100, type=int, metavar='N',
@@ -41,13 +42,32 @@ parser.add_argument('--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 20)')
 parser.add_argument('--save-freq', default=5, type=int,
                     metavar='N', help='save frequency (default: 200)')
-parser.add_argument('--resume', default='output', type=str, metavar='PATH',
+parser.add_argument('--resume', default='output_tiered_128', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 
 best_prec = 0
 
+from torch.optim.lr_scheduler import LambdaLR
+class WarmupCosineSchedule(LambdaLR):
+    """ Linear warmup and then cosine decay.
+        Linearly increases learning rate from 0 to 1 over `warmup_steps` training steps.
+        Decreases learning rate from 1. to 0. over remaining `t_total - warmup_steps` steps following a cosine curve.
+        If `cycles` (default=0.5) is different from default, learning rate follows cosine function after warmup.
+    """
+    def __init__(self, optimizer, warmup_steps, t_total, cycles=.5, last_epoch=-1):
+        self.warmup_steps = warmup_steps
+        self.t_total = t_total
+        self.cycles = cycles
+        super(WarmupCosineSchedule, self).__init__(optimizer, self.lr_lambda, last_epoch=last_epoch)
+
+    def lr_lambda(self, step):
+        if step < self.warmup_steps:
+            return float(step) / float(max(1.0, self.warmup_steps))
+        # progress after warmup
+        progress = float(step - self.warmup_steps) / float(max(1, self.t_total - self.warmup_steps))
+        return max(0.0, 0.5 * (1. + math.cos(math.pi * float(self.cycles) * 2.0 * progress)))
 
 def main():
     global args, best_prec
@@ -89,12 +109,13 @@ def main():
 #    val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
                             #pin_memory=True)
 
+    scheduler = WarmupCosineSchedule(optimizer, warmup_steps=50, t_total=100)
+
     for epoch in range(args.start_epoch, args.epochs):
         print ('epoch: ' + str(epoch + 1))
         adjust_learning_rate(optimizer, epoch)
-
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch)
+        train(train_loader, model, criterion, optimizer, epoch, scheduler)
 
         # evaluate on validation set
         #prec = validate(val_loader, model, criterion)
@@ -120,7 +141,7 @@ def build_model():
     return model
 
 
-def train(train_loader, model, criterion, optimizer, epoch):
+def train(train_loader, model, criterion, optimizer, epoch, scheduler):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -128,10 +149,12 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
     # switch to train mode
     model.train()
-
     end = time.time()
     for i, (input, target, _) in enumerate(train_loader):
         # measure data loading time
+
+        # scheduler.step()
+        # print(scheduler.state_dict())
         data_time.update(time.time() - end)
 
         input = input.float().cuda(async=True)
@@ -238,6 +261,14 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
         # param_group['lr'] = param_group['lr']/2
+
+
+def adjust_cosine_learning_rate(optimizer, epoch, scheduler):
+    """Sets the learning rate to the initial LR decayed by 10 every 15 epochs"""
+    scheduler.step()
+    lr = args.lr * (0.1 ** (epoch // 20)) * scheduler.get_lr()
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 def accuracy(output, target):

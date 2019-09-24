@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", default="0,1,2,3")
     parser.add_argument(
         "--load",
-        default="snapshot/tiered_1shot_8way_res12_addloss_fc/iter_09500_model.pth.tar",
+        default="snapshot/tiered_5shot_20way_res18_addloss_fc/iter_09500_model.pth.tar",
     )
     parser.add_argument("--batch", type=int, default=2000)
     parser.add_argument("--way", type=int, default=5)
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     dataset = MiniImageNet(
         root=args.root, dataset="tiered-imagenet", mode="test_new_domain_fsl"
     )  # transfer
-    # dataset = MiniImageNet(root=args.root, dataset='tiered-imagenet', mode='test') #origin
+    # dataset = MiniImageNet(root=args.root, dataset='mini-imagenet', mode='test') #origin
     sampler = CategoriesSampler(
         dataset.label, args.batch, args.way, args.shot + args.query
     )

@@ -17,8 +17,15 @@ from data_loader import *
 import random
 import pdb
 import math
-from prototypical_network_pytorch.utils import pprint, set_gpu, ensure_path, Averager, Timer, count_acc, \
-    euclidean_metric
+from prototypical_network_pytorch.utils import (
+    pprint,
+    set_gpu,
+    ensure_path,
+    Averager,
+    Timer,
+    count_acc,
+    euclidean_metric,
+)
 from torch.autograd import Variable
 from torch.nn.parameter import Parameter
 
@@ -30,8 +37,12 @@ class learnedweight(nn.Module):
         self.da_weight = Parameter(torch.ones(1), requires_grad=True)
 
     def forward(self, fsl_loss, da_loss):
-        final_loss = self.fsl_weight + torch.exp(-1 * self.fsl_weight) * fsl_loss + self.da_weight + torch.exp(
-            -1 * self.da_weight) * da_loss
+        final_loss = (
+            self.fsl_weight
+            + torch.exp(-1 * self.fsl_weight) * fsl_loss
+            + self.da_weight
+            + torch.exp(-1 * self.da_weight) * da_loss
+        )
         return final_loss
 
 
@@ -39,8 +50,8 @@ def image_classification_test(loader, model, test_10crop=True):
     start_test = True
     with torch.no_grad():
         if test_10crop:
-            iter_test = [iter(loader['test'][i]) for i in range(10)]
-            for i in range(len(loader['test'][0])):
+            iter_test = [iter(loader["test"][i]) for i in range(10)]
+            for i in range(len(loader["test"][0])):
                 data = [iter_test[j].next() for j in range(10)]
                 inputs = [data[j][0] for j in range(10)]
                 labels = data[0][1]
@@ -57,12 +68,11 @@ def image_classification_test(loader, model, test_10crop=True):
                     all_label = labels.float()
                     start_test = False
                 else:
-                    all_output = torch.cat(
-                        (all_output, outputs.float().cpu()), 0)
+                    all_output = torch.cat((all_output, outputs.float().cpu()), 0)
                     all_label = torch.cat((all_label, labels.float()), 0)
         else:
             iter_test = iter(loader["test"])
-            for i in range(len(loader['test'])):
+            for i in range(len(loader["test"])):
                 data = iter_test.next()
                 inputs = data[0]
                 labels = data[1]
@@ -74,12 +84,12 @@ def image_classification_test(loader, model, test_10crop=True):
                     all_label = labels.float()
                     start_test = False
                 else:
-                    all_output = torch.cat(
-                        (all_output, outputs.float().cpu()), 0)
+                    all_output = torch.cat((all_output, outputs.float().cpu()), 0)
                     all_label = torch.cat((all_label, labels.float()), 0)
     _, predict = torch.max(all_output, 1)
-    accuracy = torch.sum(torch.squeeze(predict).float() ==
-                         all_label).item() / float(all_label.size()[0])
+    accuracy = torch.sum(torch.squeeze(predict).float() == all_label).item() / float(
+        all_label.size()[0]
+    )
     return accuracy
 
 
@@ -87,12 +97,12 @@ def train(config):
     # set pre-process
     prep_dict = {}
     prep_config = config["prep"]
-    prep_dict["source"] = prep.image_train(**config["prep"]['params'])
-    prep_dict["target"] = prep.image_train(**config["prep"]['params'])
+    prep_dict["source"] = prep.image_train(**config["prep"]["params"])
+    prep_dict["target"] = prep.image_train(**config["prep"]["params"])
     if prep_config["test_10crop"]:
-        prep_dict["test"] = prep.image_test_10crop(**config["prep"]['params'])
+        prep_dict["test"] = prep.image_test_10crop(**config["prep"]["params"])
     else:
-        prep_dict["test"] = prep.image_test(**config["prep"]['params'])
+        prep_dict["test"] = prep.image_test(**config["prep"]["params"])
 
     # prepare data
     dsets = {}
@@ -104,44 +114,46 @@ def train(config):
     dsets["target"] = MiniImageNet(
         root=data_config["target"]["root"],
         dataset=config["dataset"],
-        mode=data_config["target"]["split"])
+        mode=data_config["target"]["split"],
+    )
     dset_loaders["target"] = DataLoader(
         dsets["target"],
-        batch_size=config["shot"] *
-        config["train_way"],
+        batch_size=config["shot"] * config["train_way"],
         shuffle=True,
         num_workers=4,
-        drop_last=True)
+        drop_last=True,
+    )
     dsets["source"] = MiniImageNet(
         root=data_config["source"]["root"],
         dataset=config["dataset"],
-        mode=data_config["source"]["split"])
+        mode=data_config["source"]["split"],
+    )
     fsl_train_sampler = CategoriesSampler(
         dsets["source"].label,
         100,
         config["train_way"],
-        config["shot"] +
-        config["query"])
+        config["shot"] + config["query"],
+    )
     dset_loaders["source"] = DataLoader(
         dataset=dsets["source"],
         batch_sampler=fsl_train_sampler,
         num_workers=4,
-        pin_memory=True)
+        pin_memory=True,
+    )
     fsl_valset = MiniImageNet(
         root=data_config["fsl_test"]["root"],
         dataset=config["dataset"],
-        mode=data_config["fsl_test"]["split"])
+        mode=data_config["fsl_test"]["split"],
+    )
     fsl_val_sampler = CategoriesSampler(
-        fsl_valset.label,
-        400,
-        config["test_way"],
-        config["shot"] +
-        config["query"])
+        fsl_valset.label, 400, config["test_way"], config["shot"] + config["query"]
+    )
     fsl_val_loader = DataLoader(
         dataset=fsl_valset,
         batch_sampler=fsl_val_sampler,
         num_workers=4,
-        pin_memory=True)
+        pin_memory=True,
+    )
 
     class_num = config["network"]["params"]["class_num"]
 
@@ -153,40 +165,40 @@ def train(config):
     # add additional network for some methods
     if config["loss"]["random"]:
         random_layer = network.RandomLayer(
-            [base_network.output_num(), class_num], config["loss"]["random_dim"])
+            [base_network.output_num(), class_num], config["loss"]["random_dim"]
+        )
         ad_net = network.AdversarialNetwork(config["loss"]["random_dim"], 1024)
     else:
         random_layer = None
-        ad_net = network.AdversarialNetwork(
-            base_network.output_num() * class_num, 1024)
+        ad_net = network.AdversarialNetwork(base_network.output_num() * class_num, 1024)
     if config["loss"]["random"]:
         random_layer.cuda()
     ad_net = ad_net.cuda()
     autoweight = learnedweight().cuda()
     # print(base_network.get_parameters())
     # print([{'params': autoweight.parameters(), 'lr_mult': 1, 'decay_mult': 2}])
-    parameter_list = base_network.get_parameters() + ad_net.get_parameters() + [
-        {'params': autoweight.parameters(), 'lr_mult': 1, 'decay_mult': 2}]
+    parameter_list = (
+        base_network.get_parameters()
+        + ad_net.get_parameters()
+        + [{"params": autoweight.parameters(), "lr_mult": 1, "decay_mult": 2}]
+    )
 
     # set optimizer
     optimizer_config = config["optimizer"]
-    optimizer = optimizer_config["type"](parameter_list,
-                                         **(optimizer_config["optim_params"]))
+    optimizer = optimizer_config["type"](
+        parameter_list, **(optimizer_config["optim_params"])
+    )
     param_lr = []
     for param_group in optimizer.param_groups:
         param_lr.append(param_group["lr"])
     schedule_param = optimizer_config["lr_param"]
     lr_scheduler = lr_schedule.schedule_dict[optimizer_config["lr_type"]]
 
-    gpus = config['gpu'].split(',')
+    gpus = config["gpu"].split(",")
     if len(gpus) > 1:
         ad_net = nn.DataParallel(ad_net, device_ids=[int(i) for i in gpus])
-        base_network = nn.DataParallel(
-            base_network, device_ids=[
-                int(i) for i in gpus])
-        autoweight = nn.DataParallel(
-            autoweight, device_ids=[
-                int(i) for i in gpus])
+        base_network = nn.DataParallel(base_network, device_ids=[int(i) for i in gpus])
+        autoweight = nn.DataParallel(autoweight, device_ids=[int(i) for i in gpus])
 
     # train
     len_train_source = len(dset_loaders["source"])
@@ -213,24 +225,24 @@ def train(config):
                 data_shot, data_query = data[:k], data[k:]
 
                 _, x, _ = base_network(data_shot)
-                x = x.reshape(config["shot"],
-                              config["test_way"], -1).mean(dim=0)
+                x = x.reshape(config["shot"], config["test_way"], -1).mean(dim=0)
                 p = x
                 _, proto_query, _ = base_network(data_query)
                 proto_query = proto_query.reshape(
-                    config["shot"], config["train_way"], -1).mean(dim=0)
+                    config["shot"], config["train_way"], -1
+                ).mean(dim=0)
                 logits = euclidean_metric(proto_query, p)
 
-                label = torch.arange(
-                    config["test_way"]).repeat(
-                    config["query"])
+                label = torch.arange(config["test_way"]).repeat(config["query"])
                 label = label.type(torch.cuda.LongTensor)
 
                 acc = count_acc(logits, label)
                 ave_acc.add(acc)
                 print(
-                    'batch {}: {:.2f}({:.2f})'.format(
-                        i, ave_acc.item() * 100, acc * 100))
+                    "batch {}: {:.2f}({:.2f})".format(
+                        i, ave_acc.item() * 100, acc * 100
+                    )
+                )
 
                 x = None
                 p = None
@@ -238,9 +250,8 @@ def train(config):
         if i % config["snapshot_interval"] == 0:
             torch.save(
                 nn.Sequential(base_network),
-                osp.join(
-                    config["output_path"],
-                    "iter_{:05d}_model.pth.tar".format(i)))
+                osp.join(config["output_path"], "iter_{:05d}_model.pth.tar".format(i)),
+            )
 
         loss_params = config["loss"]
         # train one iter
@@ -264,10 +275,10 @@ def train(config):
         labels_source = labels_fsl[:p]
 
         pre_source, proto_source, outputs_source = base_network(data_shot)
-        pre_target, features_target, outputs_target = base_network(
-            inputs_target)
-        proto = proto_source.reshape(
-            config["shot"], config["train_way"], -1).mean(dim=0)
+        pre_target, features_target, outputs_target = base_network(inputs_target)
+        proto = proto_source.reshape(config["shot"], config["train_way"], -1).mean(
+            dim=0
+        )
 
         label = torch.arange(config["train_way"]).repeat(config["query"])
         label = label.type(torch.cuda.LongTensor)
@@ -281,72 +292,61 @@ def train(config):
         features = torch.cat((proto_source, features_target), dim=0)
         outputs = torch.cat((outputs_source, outputs_target), dim=0)
         softmax_out = nn.Softmax(dim=1)(outputs)
-        if config['method'] == 'CDAN+E':
+        if config["method"] == "CDAN+E":
             entropy = loss.Entropy(softmax_out)
-            transfer_loss = loss.CDAN([features,
-                                       softmax_out],
-                                      ad_net,
-                                      entropy,
-                                      network.calc_coeff(i),
-                                      random_layer) - 0.2 * loss.CDAN([pre,
-                                                                 softmax_out],
-                                                                ad_net,
-                                                                entropy,
-                                                                network.calc_coeff(i),
-                                                                random_layer)
-        elif config['method'] == 'CDAN':
             transfer_loss = loss.CDAN(
-                [features, softmax_out], ad_net, None, None, random_layer)
-        elif config['method'] == 'DANN':
+                [features, softmax_out],
+                ad_net,
+                entropy,
+                network.calc_coeff(i),
+                random_layer,
+            ) - 0.2 * loss.CDAN(
+                [pre, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer
+            )
+        elif config["method"] == "CDAN":
+            transfer_loss = loss.CDAN(
+                [features, softmax_out], ad_net, None, None, random_layer
+            )
+        elif config["method"] == "DANN":
             transfer_loss = loss.DANN(features, ad_net)
         else:
-            raise ValueError('Method cannot be recognized.')
+            raise ValueError("Method cannot be recognized.")
         # classifier_loss = nn.CrossEntropyLoss()(outputs_source, labels_source)
 
         if i % 1 == 0:
             print(
-                'iter: ',
+                "iter: ",
                 i,
-                'transfer_loss: ',
+                "transfer_loss: ",
                 transfer_loss.data,
-                'fsl_loss: ',
+                "fsl_loss: ",
                 fsl_loss.data,
-                'fsl_acc: ',
-                fsl_acc)
+                "fsl_acc: ",
+                fsl_acc,
+            )
         # total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
         total_loss = autoweight(fsl_loss, transfer_loss) / 10
         print(total_loss)
         total_loss.backward()
         optimizer.step()
-    torch.save(
-        best_model,
-        osp.join(
-            config["output_path"],
-            "best_model.pth.tar"))
+    torch.save(best_model, osp.join(config["output_path"], "best_model.pth.tar"))
     return best_acc
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Conditional Domain Adversarial Network')
+        description="Conditional Domain Adversarial Network"
+    )
     parser.add_argument(
-        '--method',
-        type=str,
-        default='CDAN+E',
-        choices=[
-            'CDAN',
-            'CDAN+E',
-            'DANN'])
+        "--method", type=str, default="CDAN+E", choices=["CDAN", "CDAN+E", "DANN"]
+    )
     parser.add_argument(
-        '--gpu_id',
-        type=str,
-        nargs='?',
-        default='0',
-        help="device id to run")
+        "--gpu_id", type=str, nargs="?", default="0", help="device id to run"
+    )
     parser.add_argument(
-        '--net',
+        "--net",
         type=str,
-        default='ResNet50',
+        default="ResNet50",
         choices=[
             "ResNet18",
             "ResNet34",
@@ -361,69 +361,69 @@ if __name__ == "__main__":
             "VGG13BN",
             "VGG16BN",
             "VGG19BN",
-            "AlexNet"])
+            "AlexNet",
+        ],
+    )
     parser.add_argument(
-        '--dset',
+        "--dset",
         type=str,
-        default='office',
+        default="office",
         choices=[
-            'office',
-            'image-clef',
-            'visda',
-            'office-home',
-            'mini-imagenet',
-            'tiered-imagenet'],
-        help="The dataset or source dataset used")
+            "office",
+            "image-clef",
+            "visda",
+            "office-home",
+            "mini-imagenet",
+            "tiered-imagenet",
+        ],
+        help="The dataset or source dataset used",
+    )
     parser.add_argument(
-        '--s_dset_path',
+        "--s_dset_path",
         type=str,
-        default='/disks/sdd/an_zhao/lab/cross-domain-fsl/dataset/mini-imagenet/train',
-        help="The dataset path")
+        default="/disks/sdd/an_zhao/lab/cross-domain-fsl/dataset/mini-imagenet/train",
+        help="The dataset path",
+    )
     parser.add_argument(
-        '--fsl_test_path',
+        "--fsl_test_path",
         type=str,
-        default='/disks/sdd/an_zhao/lab/cross-domain-fsl/dataset/mini-imagenet/test_new_domain',
-        help="The dataset path")
+        default="/disks/sdd/an_zhao/lab/cross-domain-fsl/dataset/mini-imagenet/test_new_domain",
+        help="The dataset path",
+    )
     parser.add_argument(
-        '--test_interval',
+        "--test_interval",
         type=int,
         default=10000,
-        help="interval of two continuous test phase")
+        help="interval of two continuous test phase",
+    )
     parser.add_argument(
-        '--snapshot_interval',
+        "--snapshot_interval",
         type=int,
         default=500,
-        help="interval of two continuous output model")
+        help="interval of two continuous output model",
+    )
     parser.add_argument(
-        '--output_dir',
+        "--output_dir",
         type=str,
-        default='mini_auto_weight10',
-        help="output directory of our model (in ../snapshot directory)")
+        default="mini_auto_weight10",
+        help="output directory of our model (in ../snapshot directory)",
+    )
+    parser.add_argument("--lr", type=float, default=0.0005, help="learning rate")
     parser.add_argument(
-        '--lr',
-        type=float,
-        default=0.0005,
-        help="learning rate")
-    parser.add_argument(
-        '--random',
-        type=bool,
-        default=False,
-        help="whether use random projection")
-    parser.add_argument('--shot', type=int, default=1)
-    parser.add_argument('--query', type=int, default=15)
-    parser.add_argument('--train-way', type=int, default=30)
-    parser.add_argument('--test-way', type=int, default=5)
-    parser.add_argument(
-        '--pretrained',
-        type=str,
-        default='tiered_checkpoint.pth.tar')
+        "--random", type=bool, default=False, help="whether use random projection"
+    )
+    parser.add_argument("--shot", type=int, default=1)
+    parser.add_argument("--query", type=int, default=15)
+    parser.add_argument("--train-way", type=int, default=30)
+    parser.add_argument("--test-way", type=int, default=5)
+    parser.add_argument("--pretrained", type=str, default="tiered_checkpoint.pth.tar")
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     # os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
     # train config
     config = {}
-    config['method'] = args.method
+    config["method"] = args.method
     config["gpu"] = args.gpu_id
     config["num_iterations"] = 100004
     config["test_interval"] = args.test_interval
@@ -431,36 +431,34 @@ if __name__ == "__main__":
     config["output_for_test"] = True
     config["output_path"] = "snapshot/" + args.output_dir
     if not osp.exists(config["output_path"]):
-        os.system('mkdir -p ' + config["output_path"])
+        os.system("mkdir -p " + config["output_path"])
     config["out_file"] = open(osp.join(config["output_path"], "log.txt"), "w")
     if not osp.exists(config["output_path"]):
         os.mkdir(config["output_path"])
 
     config["prep"] = {
         "test_10crop": True,
-        'params': {
-            "resize_size": 256,
-            "crop_size": 224,
-            'alexnet': False}}
+        "params": {"resize_size": 256, "crop_size": 224, "alexnet": False},
+    }
     config["loss"] = {"trade_off": 1.0}
     if "AlexNet" in args.net:
-        config["prep"]['params']['alexnet'] = True
-        config["prep"]['params']['crop_size'] = 227
+        config["prep"]["params"]["alexnet"] = True
+        config["prep"]["params"]["crop_size"] = 227
         config["network"] = {
             "name": network.AlexNetFc,
-            "params": {
-                "use_bottleneck": True,
-                "bottleneck_dim": 256,
-                "new_cls": True}}
+            "params": {"use_bottleneck": True, "bottleneck_dim": 256, "new_cls": True},
+        }
     elif "ResNet" in args.net:
         config["network"] = {
             "name": network.ResNetFc,
             "params": {
                 "resnet_name": args.net,
                 "use_bottleneck": True,
-                "bottleneck_dim": 640,
+                "bottleneck_dim": 512,
                 "new_cls": True,
-                "pretrained_model": args.pretrained}}
+                "pretrained_model": args.pretrained,
+            },
+        }
     elif "VGG" in args.net:
         config["network"] = {
             "name": network.VGGFc,
@@ -468,50 +466,51 @@ if __name__ == "__main__":
                 "vgg_name": args.net,
                 "use_bottleneck": True,
                 "bottleneck_dim": 256,
-                "new_cls": True}}
+                "new_cls": True,
+            },
+        }
     config["loss"]["random"] = args.random
     config["loss"]["random_dim"] = 1024
 
     config["optimizer"] = {
         "type": optim.SGD,
         "optim_params": {
-            'lr': args.lr,
+            "lr": args.lr,
             "momentum": 0.9,
             "weight_decay": 0.0005,
-            "nesterov": True},
+            "nesterov": True,
+        },
         "lr_type": "inv",
-        "lr_param": {
-            "lr": args.lr,
-            "gamma": 0.001,
-            "power": 0.75}}
+        "lr_param": {"lr": args.lr, "gamma": 0.001, "power": 0.75},
+    }
 
     config["dataset"] = args.dset
     config["data"] = {
-        "source": {
-            "root": args.s_dset_path,
-            "split": "train",
-            "batch_size": 50},
+        "source": {"root": args.s_dset_path, "split": "train", "batch_size": 50},
         "target": {
             "root": args.s_dset_path,
             "split": "val_new_domain",
-            "batch_size": 8},
-        "test": {
-            "root": args.s_dset_path,
-            "split": "val_new_domain",
-            "batch_size": 4},
+            "batch_size": 8,
+        },
+        "test": {"root": args.s_dset_path, "split": "val_new_domain", "batch_size": 4},
         "fsl_test": {
             "root": args.fsl_test_path,
             "split": "val_new_domain_fsl",
-            "batch_size": 4}}
+            "batch_size": 4,
+        },
+    }
 
     if config["dataset"] == "office":
-        if ("amazon" in args.s_dset_path and "webcam" in args.t_dset_path) or \
-                ("webcam" in args.s_dset_path and "dslr" in args.t_dset_path) or \
-                ("webcam" in args.s_dset_path and "amazon" in args.t_dset_path) or \
-                ("dslr" in args.s_dset_path and "amazon" in args.t_dset_path):
+        if (
+            ("amazon" in args.s_dset_path and "webcam" in args.t_dset_path)
+            or ("webcam" in args.s_dset_path and "dslr" in args.t_dset_path)
+            or ("webcam" in args.s_dset_path and "amazon" in args.t_dset_path)
+            or ("dslr" in args.s_dset_path and "amazon" in args.t_dset_path)
+        ):
             config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
-        elif ("amazon" in args.s_dset_path and "dslr" in args.t_dset_path) or \
-                ("dslr" in args.s_dset_path and "webcam" in args.t_dset_path):
+        elif ("amazon" in args.s_dset_path and "dslr" in args.t_dset_path) or (
+            "dslr" in args.s_dset_path and "webcam" in args.t_dset_path
+        ):
             # optimal parameters
             config["optimizer"]["lr_param"]["lr"] = 0.0003
         config["network"]["params"]["class_num"] = 31
@@ -521,21 +520,22 @@ if __name__ == "__main__":
     elif config["dataset"] == "visda":
         config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 12
-        config['loss']["trade_off"] = 1.0
+        config["loss"]["trade_off"] = 1.0
     elif config["dataset"] == "office-home":
         config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 65
     elif config["dataset"] == "mini-imagenet":
         config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 64
-        config['loss']["trade_off"] = 1.0
+        config["loss"]["trade_off"] = 1.0
     elif config["dataset"] == "tiered-imagenet":
         config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 351
-        config['loss']["trade_off"] = 1.0
+        config["loss"]["trade_off"] = 1.0
     else:
         raise ValueError(
-            'Dataset cannot be recognized. Please define your own dataset here.')
+            "Dataset cannot be recognized. Please define your own dataset here."
+        )
     config["out_file"].write(str(config))
     config["out_file"].flush()
 
