@@ -16,7 +16,8 @@ import resnet
 from resnet import ResNetFc
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dir_path', default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/')
+parser.add_argument('--dir_path',
+default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/domain-net/')
 parser.add_argument('--arch', default='resnet18',
                     choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'])
 parser.add_argument('--workers', default=32, type=int, metavar='N',
@@ -42,7 +43,7 @@ parser.add_argument('--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 20)')
 parser.add_argument('--save-freq', default=5, type=int,
                     metavar='N', help='save frequency (default: 200)')
-parser.add_argument('--resume', default='output_tiered_128', type=str, metavar='PATH',
+parser.add_argument('--resume', default='output_domain_cosine', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
@@ -101,7 +102,7 @@ def main():
                         transforms.ToTensor(),
                         transforms.Normalize(mean=mean, std=std)])
 
-    train_data = MyDataset(os.path.join(args.dir_path, 'trainval_list.txt'), args.dir_path, args.new_width, args.new_length,train_transform)
+    train_data = MyDataset(os.path.join(args.dir_path, 'train_list.txt'), args.dir_path, args.new_width, args.new_length,train_transform)
 #    val_data = MyDataset(os.path.join(args.dir_path, 'val.txt'), args.dir_path, args.new_width, args.new_length, val_transform)
     
     train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
@@ -113,7 +114,7 @@ def main():
 
     for epoch in range(args.start_epoch, args.epochs):
         print ('epoch: ' + str(epoch + 1))
-        adjust_learning_rate(optimizer, epoch)
+      #  adjust_learning_rate(optimizer, epoch)
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, scheduler)
 
@@ -153,8 +154,8 @@ def train(train_loader, model, criterion, optimizer, epoch, scheduler):
     for i, (input, target, _) in enumerate(train_loader):
         # measure data loading time
 
-        # scheduler.step()
-        # print(scheduler.state_dict())
+        scheduler.step()
+        print(scheduler.state_dict())
         data_time.update(time.time() - end)
 
         input = input.float().cuda(async=True)

@@ -1,2 +1,3 @@
-srun -p AD --gres=gpu:8 -n1 python -u test.py
+#srun -p AD --gres=gpu:1 -n1 python -u test.py --load snapshot/mini_5shot_30way_res18_addloss_fc_0.1/iter_75000_model.pth.tar --root /mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet
+srun -p AD --gres=gpu:1 -n1 python -u test.py --load snapshot/domain_5shot_20way_res18_addloss_fc_cosine/iter_08500_model.pth.tar --root /mnt/lustre/dingmingyu/Research/da_zsl/dataset/domain-net --query 4
 #-x BJ-IDC1-10-10-30-105

@@ -80,15 +80,15 @@ def train(config):
     dset_loaders = {}
     data_config = config["data"]
     train_bs = data_config["source"]["batch_size"]
-    test_bs = data_config["test"]["batch_size"]
-    dsets["source"] = ImageList(open(data_config["source"]["list_path"]).readlines(), \
+    test_bs = data_config["target"]["batch_size"]
+    dsets["source"] = ImageList(config["root"], open(data_config["source"]["list_path"]).readlines(), \
                                 transform=prep_dict["source"])
     dset_loaders["source"] = DataLoader(dsets["source"], batch_size=train_bs, \
             shuffle=True, num_workers=4, drop_last=True)
     #print(open(data_config["target"]["list_path"]).readlines())
-    dsets["target"] = ImageList(open(data_config["target"]["list_path"]).readlines(), \
+    dsets["target"] = ImageList(config["root"], open(data_config["target"]["list_path"]).readlines(), \
                                 transform=prep_dict["target"])
-    dset_loaders["target"] = DataLoader(dsets["target"], batch_size=train_bs, \
+    dset_loaders["target"] = DataLoader(dsets["target"], batch_size=test_bs, \
             shuffle=True, num_workers=4, drop_last=True)
 
 #     if prep_config["test_10crop"]:
@@ -108,7 +108,7 @@ def train(config):
     ## set base network
     net_config = config["network"]
     base_network = net_config["name"](**net_config["params"])
-    checkpoint = torch.load('tiered.pth.tar')
+    checkpoint = torch.load(config["pretrain"])
     model_dict = base_network.state_dict()
     new_dict = {k.replace('module.',''): v for k, v in checkpoint['state_dict'].items() if (k.replace('module.','') in model_dict.keys() and 'fc' not in k)}
     print(model_dict.keys(), new_dict.keys())
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Conditional Domain Adversarial Network')
     parser.add_argument('--method', type=str, default='CDAN+E', choices=['CDAN', 'CDAN+E', 'DANN'])
     parser.add_argument('--gpu_id', type=str, nargs='?', default='0', help="device id to run")
-    parser.add_argument('--net', type=str, default='ResNet50', choices=["ResNet18", "ResNet34", "ResNet50", "ResNet101", "ResNet152", "VGG11", "VGG13", "VGG16", "VGG19", "VGG11BN", "VGG13BN", "VGG16BN", "VGG19BN", "AlexNet"])
+    parser.add_argument('--net', type=str, default='ResNet18', choices=["ResNet18", "ResNet34", "ResNet50", "ResNet101", "ResNet152", "VGG11", "VGG13", "VGG16", "VGG19", "VGG11BN", "VGG13BN", "VGG16BN", "VGG19BN", "AlexNet"])
     parser.add_argument('--dset', type=str, default='office', choices=['office', 'image-clef', 'visda', 'office-home', 'imagenet'], help="The dataset or source dataset used")
     parser.add_argument('--s_dset_path', type=str, default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/imagenet/list/train_list.txt', help="The source dataset path list")
     parser.add_argument('--t_dset_path', type=str, default='/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet/test_transfer_5.txt', help="The target dataset path list")
@@ -217,6 +217,8 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str, default='san', help="output directory of our model (in ../snapshot directory)")
     parser.add_argument('--lr', type=float, default=0.001, help="learning rate")
     parser.add_argument('--random', type=bool, default=False, help="whether use random projection")
+    parser.add_argument("--pretrained", type=str, default="tiered_checkpoint.pth.tar")
+    parser.add_argument("--root", type=str, default="/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet/")
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     #os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
@@ -230,13 +232,16 @@ if __name__ == "__main__":
     config["snapshot_interval"] = args.snapshot_interval
     config["output_for_test"] = True
     config["output_path"] = "snapshot/" + args.output_dir
+    config["pretrain"] = args.pretrained
+    config["root"] = args.root
+
     if not osp.exists(config["output_path"]):
         os.system('mkdir -p '+config["output_path"])
     config["out_file"] = open(osp.join(config["output_path"], "log.txt"), "w")
     if not osp.exists(config["output_path"]):
         os.mkdir(config["output_path"])
 
-    config["prep"] = {"test_10crop":True, 'params':{"resize_size":256, "crop_size":224, 'alexnet':False}}
+    config["prep"] = {"test_10crop":True, 'params':{"resize_size":100, "crop_size":84, 'alexnet':False}}
     config["loss"] = {"trade_off":1.0}
     if "AlexNet" in args.net:
         config["prep"]['params']['alexnet'] = True

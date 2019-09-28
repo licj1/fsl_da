@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", default="0,1,2,3")
     parser.add_argument(
         "--load",
-        default="snapshot/tiered_5shot_20way_res18_addloss_fc/iter_09500_model.pth.tar",
+        default="snapshot/mini_5shot_30way_res18_addloss_fc_0.1/iter_10000_model.pth.tar",
     )
     parser.add_argument("--batch", type=int, default=2000)
     parser.add_argument("--way", type=int, default=5)
@@ -28,15 +28,15 @@ if __name__ == "__main__":
     parser.add_argument("--query", type=int, default=30)
     parser.add_argument(
         "--root",
-        default="/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/",
+        default="/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet",
     )
     args = parser.parse_args()
     pprint(vars(args))
 
-    set_gpu(args.gpu)
+    #set_gpu(args.gpu)
 
     dataset = MiniImageNet(
-        root=args.root, dataset="tiered-imagenet", mode="test_new_domain_fsl"
+        root=args.root, dataset=args.root.split('/')[-1], mode="test_new_domain_fsl"
     )  # transfer
     # dataset = MiniImageNet(root=args.root, dataset='mini-imagenet', mode='test') #origin
     sampler = CategoriesSampler(
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     #         print(key)
     # model = list(model.children())[9].cuda()
     # base_network= torch.nn.Sequential(*list(base_network.children())[:-1]).cuda()
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
     print(model)
     model.eval()
 

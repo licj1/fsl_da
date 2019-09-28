@@ -62,7 +62,7 @@ class ResNetFc(nn.Module):
 
 
 
-def image_classification_test(loader, model, test_10crop=True):
+def image_classification_test(loader, model, test_10crop=True, output_list=''):
     start_test = True
     with torch.no_grad():
 #         if test_10crop:
@@ -107,7 +107,7 @@ def image_classification_test(loader, model, test_10crop=True):
     all_output = all_output.squeeze(2).squeeze(2).numpy()
     all_label = all_label.cpu().numpy()
     length = len(all_label)
-    f = open('feature20_tiered_50.txt','w')
+    f = open(output_list,'w')
     for i in range(length):
         line = all_output[i]
         for item in line:
@@ -153,7 +153,7 @@ def train(config):
 #     else:
 
 
-    dsets["test"] = ImageList(open(data_config["test"]["list_path"]).readlines(), \
+    dsets["test"] = ImageList(config["root"], open(data_config["test"]["list_path"]).readlines(), \
                             transform=prep_dict["test"])
     dset_loaders["test"] = DataLoader(dsets["test"], batch_size=test_bs, \
                             shuffle=False, num_workers=4)
@@ -167,7 +167,7 @@ def train(config):
     #base_network = base_network.cuda()
     #print(base_network)
     
-    base_network = torch.load('/mnt/lustre/dingmingyu/Research/da_zsl/fsl_da/CDAN_pytorch/snapshot/output_tiered_20/iter_60000_model.pth.tar')
+    base_network = torch.load(config['model'])
     base_network= list(base_network.children())[0]
     base_network = base_network.module
 #     for key, value in base_network.state_dict().items():
@@ -214,7 +214,7 @@ def train(config):
     
     base_network.train(False)
     image_classification_test(dset_loaders, \
-        base_network, test_10crop=prep_config["test_10crop"])
+        base_network, test_10crop=prep_config["test_10crop"], output_list=config['output_list'])
 
 
     return 
@@ -232,12 +232,18 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str, default='san', help="output directory of our model (in ../snapshot directory)")
     parser.add_argument('--lr', type=float, default=0.001, help="learning rate")
     parser.add_argument('--random', type=bool, default=False, help="whether use random projection")
+    parser.add_argument('--model', type=str, default=False, help="whether use random projection")
+    parser.add_argument('--output_list', type=str, default=False, help="whether use random projection")
+    parser.add_argument("--root", type=str, default="/mnt/lustre/dingmingyu/Research/da_zsl/dataset/mini-imagenet/")
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     #os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
     # train config
     config = {}
+    config['model'] = args.model
+    config['root'] = args.root
+    config['output_list'] = args.output_list
     config['method'] = args.method
     config["gpu"] = args.gpu_id
     config["num_iterations"] = 100004

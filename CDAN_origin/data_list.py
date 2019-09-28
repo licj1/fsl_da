@@ -24,8 +24,8 @@ def make_dataset(image_list, labels):
     return images
 
 
-def rgb_loader(path):
-    with open('/mnt/lustre/dingmingyu/Research/da_zsl/dataset/tiered-imagenet/' + path, 'rb') as f:
+def rgb_loader(root, path):
+    with open(root + path, 'rb') as f:
         with Image.open(f) as img:
             return img.convert('RGB')
 
@@ -35,13 +35,14 @@ def l_loader(path):
             return img.convert('L')
 
 class ImageList(Dataset):
-    def __init__(self, image_list, labels=None, transform=None, target_transform=None, mode='RGB'):
+    def __init__(self, root, image_list, labels=None, transform=None, target_transform=None, mode='RGB'):
         imgs = make_dataset(image_list, labels)
         if len(imgs) == 0:
             raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
 
         self.imgs = imgs
+        self.root = root
         self.transform = transform
         self.target_transform = target_transform
         if mode == 'RGB':
@@ -52,7 +53,7 @@ class ImageList(Dataset):
     def __getitem__(self, index):
         path, target = self.imgs[index]
         #print(path, target)
-        img = self.loader(path)
+        img = self.loader(self.root, path)
         if self.transform is not None:
             img = self.transform(img)
         if self.target_transform is not None:

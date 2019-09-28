@@ -249,10 +249,10 @@ def train(config):
                 k = config["test_way"] * config["shot"]
                 data_shot, data_query = data[:k], data[k:]
 
-                x, _ = base_network(data_shot)
+                _, x, _ = base_network(data_shot)
                 x = x.reshape(config["shot"], config["test_way"], -1).mean(dim=0)
                 p = x
-                proto_query, _ = base_network(data_query)
+                _, proto_query, _ = base_network(data_query)
                 proto_query = proto_query.reshape(
                     config["shot"], config["train_way"], -1
                 ).mean(dim=0)
@@ -298,6 +298,7 @@ def train(config):
         if (i - start) % len_train_target == 0:
             iter_target = iter(dset_loaders["target"])
 
+
         if i - start < len_train_source:
             inputs_target, labels_target = iter_target.next()
             inputs_fsl, labels_fsl = iter_fsl_train.next()
@@ -308,8 +309,8 @@ def train(config):
             data_shot, data_query = inputs_fsl[:p], inputs_fsl[p:]
             labels_source = labels_fsl[:p]
 
-            proto_source, outputs_source = base_network(data_shot)
-            features_target, outputs_target = base_network(inputs_target)
+            pre_source, proto_source, outputs_source = base_network(data_shot)
+            pre_target, features_target, outputs_target = base_network(inputs_target)
             proto = proto_source.reshape(config["shot"], config["train_way"], -1).mean(
                 dim=0
             )
@@ -317,13 +318,14 @@ def train(config):
             label = torch.arange(config["train_way"]).repeat(config["query"])
             label = label.type(torch.cuda.LongTensor)
 
-            query_proto, _ = base_network(data_query)
+            pre_query, query_proto, _ = base_network(data_query)
             logits = euclidean_metric(query_proto, proto)
-            print(proto.size(), logits.size(), label.size())
+            print(proto.size(), query_proto.size(), logits.size(), label.size())
             # fsl_loss = F.cross_entropy(logits, label)
             fsl_loss = nn.CrossEntropyLoss()(logits, label)
             fsl_acc = count_acc(logits, label)
 
+            pre = torch.cat((pre_source, pre_target), dim=0)
             features = torch.cat((proto_source, features_target), dim=0)
             outputs = torch.cat((outputs_source, outputs_target), dim=0)
             softmax_out = nn.Softmax(dim=1)(outputs)
@@ -335,6 +337,8 @@ def train(config):
                     entropy,
                     network.calc_coeff(i),
                     random_layer,
+                ) - 0.2 * loss.CDAN(
+                [pre, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer
                 )
             elif config["method"] == "CDAN":
                 transfer_loss = loss.CDAN(
@@ -357,21 +361,22 @@ def train(config):
             data_shot, data_query = inputs_fsl[:p], inputs_fsl[p:]
             labels_target = labels_fsl[:p]
 
-            proto_target, outputs_target = base_network(data_shot)
-            features_source, outputs_source = base_network(inputs_source)
+            pre_target, proto_target, outputs_target = base_network(data_shot)
+            pre_source, features_source, outputs_source = base_network(inputs_source)
             proto = proto_target.reshape(config["shot"], config["train_way"], -1).mean(
                 dim=0
             )
 
             label = torch.arange(config["train_way"]).repeat(config["query"])
             label = label.type(torch.cuda.LongTensor)
-            query_proto, _ = base_network(data_query)
+            pre_query, query_proto, _ = base_network(data_query)
             logits = euclidean_metric(query_proto, proto)
             print(query_proto.size(), proto.size(), logits.size())
             # fsl_loss = F.cross_entropy(logits, label)
             fsl_loss = nn.CrossEntropyLoss()(logits, label)
             fsl_acc = count_acc(logits, label)
 
+            pre = torch.cat((pre_source, pre_target), dim=0)
             features = torch.cat((features_source, proto_target), dim=0)
             outputs = torch.cat((outputs_source, outputs_target), dim=0)
             softmax_out = nn.Softmax(dim=1)(outputs)
@@ -383,7 +388,9 @@ def train(config):
                     entropy,
                     network.calc_coeff(i),
                     random_layer,
-                )
+                ) - 0.2 * loss.CDAN(
+                [pre, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer
+            )
             elif config["method"] == "CDAN":
                 transfer_loss = loss.CDAN(
                     [features, softmax_out], ad_net, None, None, random_layer
@@ -475,7 +482,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--test_interval",
         type=int,
-        default=10000,
+        default=1000000,
         help="interval of two continuous test phase",
     )
     parser.add_argument(
@@ -500,7 +507,7 @@ if __name__ == "__main__":
     parser.add_argument("--test-way", type=int, default=5)
     parser.add_argument("--pretrained", type=str, default="tiered_checkpoint.pth.tar")
     args = parser.parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
     # os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
 
     # train config
@@ -536,7 +543,7 @@ if __name__ == "__main__":
             "params": {
                 "resnet_name": args.net,
                 "use_bottleneck": True,
-                "bottleneck_dim": 256,
+                "bottleneck_dim": 512,
                 "new_cls": True,
                 "pretrained_model": args.pretrained,
             },

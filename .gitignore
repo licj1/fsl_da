@@ -168,3 +168,5 @@ output
 
 snapshot/
 pretrain/log.txt
+*.swp
+*.un~
