@@ -17,15 +17,15 @@
 
 import os
 
-trainList = open('mini_train_CDANE.txt').readlines()
-valList = open('mini_val_CDANE.txt').readlines()
-f = open('mini_trainval_feature.txt', 'w')
+trainList = open('tiered_train_CDANE.txt').readlines()
+valList = open('tiered_val_CDANE.txt').readlines()
+f = open('tiered_trainval_feature.txt', 'w')
 
 for line in trainList:
     line = line.strip()
     print(line, file=f)
 
-for i in range(7):
+for i in range(5):
     for line in valList:
         line = line.strip().split()
         # print(len(line))

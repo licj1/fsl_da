@@ -24,7 +24,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--batch", type=int, default=2000)
     parser.add_argument("--way", type=int, default=5)
-    parser.add_argument("--shot", type=int, default=5)
+    parser.add_argument("--shot", type=int, default=1)
     parser.add_argument("--query", type=int, default=30)
     parser.add_argument(
         "--root",

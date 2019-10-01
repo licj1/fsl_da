@@ -337,7 +337,7 @@ def train(config):
                     entropy,
                     network.calc_coeff(i),
                     random_layer,
-                ) - 0.2 * loss.CDAN(
+                ) - 0.1 * loss.CDAN(
                 [pre, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer
                 )
             elif config["method"] == "CDAN":
@@ -388,7 +388,7 @@ def train(config):
                     entropy,
                     network.calc_coeff(i),
                     random_layer,
-                ) - 0.2 * loss.CDAN(
+                ) - 0.1 * loss.CDAN(
                 [pre, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer
             )
             elif config["method"] == "CDAN":
@@ -464,6 +464,7 @@ if __name__ == "__main__":
             "office-home",
             "mini-imagenet",
             "tiered-imagenet",
+            "domain-net",
         ],
         help="The dataset or source dataset used",
     )
@@ -624,6 +625,10 @@ if __name__ == "__main__":
     elif config["dataset"] == "tiered-imagenet":
         config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
         config["network"]["params"]["class_num"] = 351
+        config["loss"]["trade_off"] = 1.0
+    elif config["dataset"] == "domain-net":
+        config["optimizer"]["lr_param"]["lr"] = 0.001  # optimal parameters
+        config["network"]["params"]["class_num"] = 220
         config["loss"]["trade_off"] = 1.0
     else:
         raise ValueError(
