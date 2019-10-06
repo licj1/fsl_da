@@ -7,27 +7,23 @@ from torch.autograd import Variable
 import math
 import pdb
 
-# from CDAN_pytorch.res12 import resnet12
-from CDAN_pytorch.resnet import ResNetFc as resnet
-
+from resnet import ResNetFc as resnet
 
 def calc_coeff(iter_num, high=1.0, low=0.0, alpha=10.0, max_iter=10000.0):
-    return np.float(
-        2.0 * (high - low) / (1.0 + np.exp(-alpha * iter_num / max_iter))
-        - (high - low)
-        + low
-    )
+    return np.float(2.0 * (high - low) / (1.0 +
+                                          np.exp(-alpha * iter_num / max_iter)) - (high - low) + low)
 
 
 def init_weights(m):
     classname = m.__class__.__name__
-    if classname.find("Conv2d") != -1 or classname.find("ConvTranspose2d") != -1:
+    if classname.find('Conv2d') != - \
+            1 or classname.find('ConvTranspose2d') != -1:
         nn.init.kaiming_uniform_(m.weight)
         nn.init.zeros_(m.bias)
-    elif classname.find("BatchNorm") != -1:
+    elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight, 1.0, 0.02)
         nn.init.zeros_(m.bias)
-    elif classname.find("Linear") != -1:
+    elif classname.find('Linear') != -1:
         nn.init.xavier_normal_(m.weight)
         nn.init.zeros_(m.bias)
 
@@ -38,17 +34,19 @@ class RandomLayer(nn.Module):
         self.input_num = len(input_dim_list)
         self.output_dim = output_dim
         self.random_matrix = [
-            torch.randn(input_dim_list[i], output_dim) for i in range(self.input_num)
-        ]
+            torch.randn(
+                input_dim_list[i],
+                output_dim) for i in range(
+                self.input_num)]
 
     def forward(self, input_list):
         return_list = [
-            torch.mm(input_list[i], self.random_matrix[i])
-            for i in range(self.input_num)
-        ]
-        return_tensor = return_list[0] / math.pow(
-            float(self.output_dim), 1.0 / len(return_list)
-        )
+            torch.mm(
+                input_list[i],
+                self.random_matrix[i]) for i in range(
+                self.input_num)]
+        return_tensor = return_list[0] / \
+            math.pow(float(self.output_dim), 1.0 / len(return_list))
         for single in return_list[1:]:
             return_tensor = torch.mul(return_tensor, single)
         return return_tensor
@@ -59,19 +57,22 @@ class RandomLayer(nn.Module):
 
 
 class LRN(nn.Module):
-    def __init__(self, local_size=1, alpha=1.0, beta=0.75, ACROSS_CHANNELS=True):
+    def __init__(
+            self,
+            local_size=1,
+            alpha=1.0,
+            beta=0.75,
+            ACROSS_CHANNELS=True):
         super(LRN, self).__init__()
         self.ACROSS_CHANNELS = ACROSS_CHANNELS
         if ACROSS_CHANNELS:
-            self.average = nn.AvgPool3d(
-                kernel_size=(local_size, 1, 1),
-                stride=1,
-                padding=(int((local_size - 1.0) / 2), 0, 0),
-            )
+            self.average = nn.AvgPool3d(kernel_size=(local_size, 1, 1),
+                                        stride=1,
+                                        padding=(int((local_size - 1.0) / 2), 0, 0))
         else:
-            self.average = nn.AvgPool2d(
-                kernel_size=local_size, stride=1, padding=int((local_size - 1.0) / 2)
-            )
+            self.average = nn.AvgPool2d(kernel_size=local_size,
+                                        stride=1,
+                                        padding=int((local_size - 1.0) / 2))
         self.alpha = alpha
         self.beta = beta
 
@@ -89,6 +90,7 @@ class LRN(nn.Module):
 
 
 class AlexNet(nn.Module):
+
     def __init__(self, num_classes=1000):
         super(AlexNet, self).__init__()
         self.features = nn.Sequential(
@@ -134,25 +136,29 @@ def alexnet(pretrained=False, **kwargs):
     """
     model = AlexNet(**kwargs)
     if pretrained:
-        model_path = "./alexnet.pth.tar"
+        model_path = './alexnet.pth.tar'
         pretrained_model = torch.load(model_path)
-        model.load_state_dict(pretrained_model["state_dict"])
+        model.load_state_dict(pretrained_model['state_dict'])
     return model
 
-
 # convnet without the last layer
+
+
 class AlexNetFc(nn.Module):
     def __init__(
-        self, use_bottleneck=True, bottleneck_dim=256, new_cls=False, class_num=1000
-    ):
+            self,
+            use_bottleneck=True,
+            bottleneck_dim=256,
+            new_cls=False,
+            class_num=1000):
         super(AlexNetFc, self).__init__()
         model_alexnet = alexnet(pretrained=True)
         self.features = model_alexnet.features
         self.classifier = nn.Sequential()
         for i in range(6):
             self.classifier.add_module(
-                "classifier" + str(i), model_alexnet.classifier[i]
-            )
+                "classifier" + str(i),
+                model_alexnet.classifier[i])
         self.feature_layers = nn.Sequential(self.features, self.classifier)
 
         self.use_bottleneck = use_bottleneck
@@ -189,40 +195,19 @@ class AlexNetFc(nn.Module):
             if self.use_bottleneck:
                 parameter_list = [
                     {
-                        "params": self.features.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.classifier.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.bottleneck.parameters(),
-                        "lr_mult": 10,
-                        "decay_mult": 2,
-                    },
-                    {"params": self.fc.parameters(), "lr_mult": 10, "decay_mult": 2},
-                ]
+                        "params": self.features.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.classifier.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.bottleneck.parameters(), "lr_mult": 10, 'decay_mult': 2}, {
+                        "params": self.fc.parameters(), "lr_mult": 10, 'decay_mult': 2}]
             else:
                 parameter_list = [
                     {
-                        "params": self.feature_layers.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.classifier.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {"params": self.fc.parameters(), "lr_mult": 10, "decay_mult": 2},
-                ]
+                        "params": self.feature_layers.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.classifier.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.fc.parameters(), "lr_mult": 10, 'decay_mult': 2}]
         else:
             parameter_list = [
-                {"params": self.parameters(), "lr_mult": 1, "decay_mult": 2}
-            ]
+                {"params": self.parameters(), "lr_mult": 1, 'decay_mult': 2}]
         return parameter_list
 
 
@@ -231,70 +216,59 @@ resnet_dict = {
     "ResNet34": models.resnet34,
     "ResNet50": models.resnet50,
     "ResNet101": models.resnet101,
-    "ResNet152": models.resnet152,
-}
+    "ResNet152": models.resnet152}
 
 
 def grl_hook(coeff):
     def fun1(grad):
         return -coeff * grad.clone()
-
     return fun1
 
 
 class ResNetFc(nn.Module):
     def __init__(
-        self,
-        resnet_name,
-        use_bottleneck=True,
-        bottleneck_dim=256,
-        new_cls=False,
-        class_num=1000,
-        pretrained_model="tiered_checkpoint.pth.tar",
-    ):
+            self,
+            resnet_name,
+            use_bottleneck=True,
+            bottleneck_dim=256,
+            new_cls=False,
+            class_num=1000):
         super(ResNetFc, self).__init__()
-
-        model_resnet = resnet(class_num=class_num)
-
-        pretrained_dict = torch.load(pretrained_model)["state_dict"]
-        model_dict = model_resnet.state_dict()
-        # 1. filter out unnecessary keys
-        pretrained_dict = {
-            k[7:]: v
-            for k, v in pretrained_dict.items()
-            if k[7:] in model_dict and not k[7:].startswith("fc")
-        }
-        # 2. overwrite entries in the existing state dict
-        print(pretrained_dict.keys(), model_dict.keys())
-        model_dict.update(pretrained_dict)
-        # 3. load the new state dict
-        model_resnet.load_state_dict(model_dict)
+        model_resnet = resnet_dict[resnet_name](pretrained=True)
         self.conv1 = model_resnet.conv1
         self.bn1 = model_resnet.bn1
         self.relu = model_resnet.relu
+        self.maxpool = model_resnet.maxpool
         self.layer1 = model_resnet.layer1
         self.layer2 = model_resnet.layer2
         self.layer3 = model_resnet.layer3
         self.layer4 = model_resnet.layer4
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.feature_layers_1 = nn.Sequential(
-            self.conv1, self.bn1, self.relu, self.layer1, self.layer2, self.layer3
-        )
-        self.feature_layers_2 = nn.Sequential(self.layer4, self.avgpool)
+        self.avgpool = model_resnet.avgpool
+        self.feature_layers = nn.Sequential(
+            self.conv1,
+            self.bn1,
+            self.relu,
+            self.maxpool,
+            self.layer1,
+            self.layer2,
+            self.layer3,
+            self.layer4,
+            self.avgpool)
 
         self.use_bottleneck = use_bottleneck
         self.new_cls = new_cls
         if new_cls:
             if self.use_bottleneck:
-                self.bottleneck = nn.Linear(model_resnet.fc.in_features, 256)
-                self.bottleneck_new = nn.Linear(256, bottleneck_dim)
+                self.bottleneck = nn.Linear(
+                    model_resnet.fc.in_features, bottleneck_dim)
+                self.bottleneck_new = nn.Linear(
+                    bottleneck_dim, model_resnet.fc.in_features)
                 self.transfer = nn.Linear(
                     model_resnet.fc.in_features, model_resnet.fc.in_features)
-                self.fc = nn.Linear(bottleneck_dim, class_num)
+                self.fc = nn.Linear(model_resnet.fc.in_features, class_num)
                 self.bottleneck.apply(init_weights)
-                self.bottleneck_new.apply(init_weights)
                 self.fc.apply(init_weights)
-                self.__in_features = bottleneck_dim
+                self.__in_features = model_resnet.fc.in_features
             else:
                 self.fc = nn.Linear(model_resnet.fc.in_features, class_num)
                 self.fc.apply(init_weights)
@@ -304,31 +278,15 @@ class ResNetFc(nn.Module):
             self.__in_features = model_resnet.fc.in_features
 
     def forward(self, x):
-        x = self.feature_layers_1(x)
-        x = self.feature_layers_2(x)
-        x = x.view(x.size(0), -1)
+        x = self.feature_layers(x)
+        feature = x.view(x.size(0), -1)
         if self.use_bottleneck and self.new_cls:
-            transfer = self.transfer(x)
-            bottleneck = self.bottleneck(x)
-            bottleneck_new = self.bottleneck_new(bottleneck)
-            y = self.fc(bottleneck_new * transfer)
-        else:
-            bottleneck_new = 0
-            y = self.fc(x)
-        return x, bottleneck_new, y
-
-    # def forward(self, x):
-    #     x = self.feature_layers_1(x)
-    #     x = self.feature_layers_2(x)
-    #     x = x.view(x.size(0), -1)
-    #     if self.use_bottleneck and self.new_cls:
-    #         bottleneck = self.bottleneck(x)
-    #         bottleneck_new = self.bottleneck_new(bottleneck)
-    #         y = self.fc(bottleneck_new)
-    #     else:
-    #         bottleneck_new = 0
-    #         y = self.fc(x)
-    #     return x, bottleneck_new, y
+            transfer = self.transfer(feature)
+            x = self.bottleneck(feature)
+            x = self.bottleneck_new(x)
+            x = x * transfer
+        y = self.fc(x)
+        return feature, x, y
 
     def output_num(self):
         return self.__in_features
@@ -338,50 +296,17 @@ class ResNetFc(nn.Module):
             if self.use_bottleneck:
                 parameter_list = [
                     {
-                        "params": self.feature_layers_1.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.feature_layers_2.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.bottleneck.parameters(),
-                        "lr_mult": 10,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.transfer.parameters(),
-                        "lr_mult": 10,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.bottleneck_new.parameters(),
-                        "lr_mult": 10,
-                        "decay_mult": 2,
-                    },
-                    {"params": self.fc.parameters(), "lr_mult": 10, "decay_mult": 2},
-                ]
+                        "params": self.feature_layers.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.bottleneck.parameters(), "lr_mult": 10, 'decay_mult': 2}, {
+                        "params": self.bottleneck_new.parameters(), "lr_mult": 10, 'decay_mult': 2}, {
+                        "params": self.transfer.parameters(), "lr_mult": 10, 'decay_mult': 2}, {
+                        "params": self.fc.parameters(), "lr_mult": 10, 'decay_mult': 2}]
             else:
-                parameter_list = [
-                    {
-                        "params": self.feature_layers_1.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.feature_layers_2.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {"params": self.fc.parameters(), "lr_mult": 10, "decay_mult": 2},
-                ]
+                parameter_list = [{"params": self.feature_layers.parameters(), "lr_mult": 1, 'decay_mult': 2},
+                                  {"params": self.fc.parameters(), "lr_mult": 10, 'decay_mult': 2}]
         else:
             parameter_list = [
-                {"params": self.parameters(), "lr_mult": 1, "decay_mult": 2}
-            ]
+                {"params": self.parameters(), "lr_mult": 1, 'decay_mult': 2}]
         return parameter_list
 
 
@@ -393,25 +318,24 @@ vgg_dict = {
     "VGG11BN": models.vgg11_bn,
     "VGG13BN": models.vgg13_bn,
     "VGG16BN": models.vgg16_bn,
-    "VGG19BN": models.vgg19_bn,
-}
+    "VGG19BN": models.vgg19_bn}
 
 
 class VGGFc(nn.Module):
     def __init__(
-        self,
-        vgg_name,
-        use_bottleneck=True,
-        bottleneck_dim=256,
-        new_cls=False,
-        class_num=1000,
-    ):
+            self,
+            vgg_name,
+            use_bottleneck=True,
+            bottleneck_dim=256,
+            new_cls=False,
+            class_num=1000):
         super(VGGFc, self).__init__()
         model_vgg = vgg_dict[vgg_name](pretrained=True)
         self.features = model_vgg.features
         self.classifier = nn.Sequential()
         for i in range(6):
-            self.classifier.add_module("classifier" + str(i), model_vgg.classifier[i])
+            self.classifier.add_module(
+                "classifier" + str(i), model_vgg.classifier[i])
         self.feature_layers = nn.Sequential(self.features, self.classifier)
 
         self.use_bottleneck = use_bottleneck
@@ -448,44 +372,24 @@ class VGGFc(nn.Module):
             if self.use_bottleneck:
                 parameter_list = [
                     {
-                        "params": self.features.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.classifier.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.bottleneck.parameters(),
-                        "lr_mult": 10,
-                        "decay_mult": 2,
-                    },
-                    {"params": self.fc.parameters(), "lr_mult": 10, "decay_mult": 2},
-                ]
+                        "params": self.features.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.classifier.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.bottleneck.parameters(), "lr_mult": 10, 'decay_mult': 2}, {
+                        "params": self.fc.parameters(), "lr_mult": 10, 'decay_mult': 2}]
             else:
                 parameter_list = [
                     {
-                        "params": self.feature_layers.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {
-                        "params": self.classifier.parameters(),
-                        "lr_mult": 1,
-                        "decay_mult": 2,
-                    },
-                    {"params": self.fc.parameters(), "lr_mult": 10, "decay_mult": 2},
-                ]
+                        "params": self.feature_layers.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.classifier.parameters(), "lr_mult": 1, 'decay_mult': 2}, {
+                        "params": self.fc.parameters(), "lr_mult": 10, 'decay_mult': 2}]
         else:
             parameter_list = [
-                {"params": self.parameters(), "lr_mult": 1, "decay_mult": 2}
-            ]
+                {"params": self.parameters(), "lr_mult": 1, 'decay_mult': 2}]
         return parameter_list
 
-
 # For SVHN dataset
+
+
 class DTN(nn.Module):
     def __init__(self):
         super(DTN, self).__init__()
@@ -501,11 +405,14 @@ class DTN(nn.Module):
             nn.Conv2d(128, 256, kernel_size=5, stride=2, padding=2),
             nn.BatchNorm2d(256),
             nn.Dropout2d(0.5),
-            nn.ReLU(),
+            nn.ReLU()
         )
 
         self.fc_params = nn.Sequential(
-            nn.Linear(256 * 4 * 4, 512), nn.BatchNorm1d(512), nn.ReLU(), nn.Dropout()
+            nn.Linear(256 * 4 * 4, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout()
         )
 
         self.classifier = nn.Linear(512, 10)
@@ -536,8 +443,12 @@ class LeNet(nn.Module):
         )
 
         self.fc_params = nn.Sequential(
-            nn.Linear(50 * 4 * 4, 500), nn.ReLU(), nn.Dropout(p=0.5)
-        )
+            nn.Linear(
+                50 * 4 * 4,
+                500),
+            nn.ReLU(),
+            nn.Dropout(
+                p=0.5))
         self.classifier = nn.Linear(500, 10)
         self.__in_features = 500
 
@@ -574,8 +485,11 @@ class AdversarialNetwork(nn.Module):
         if self.training:
             self.iter_num += 1
         coeff = calc_coeff(
-            self.iter_num, self.high, self.low, self.alpha, self.max_iter
-        )
+            self.iter_num,
+            self.high,
+            self.low,
+            self.alpha,
+            self.max_iter)
         x = x * 1.0
         x.register_hook(grl_hook(coeff))
         x = self.ad_layer1(x)
@@ -592,4 +506,4 @@ class AdversarialNetwork(nn.Module):
         return 1
 
     def get_parameters(self):
-        return [{"params": self.parameters(), "lr_mult": 10, "decay_mult": 2}]
+        return [{"params": self.parameters(), "lr_mult": 10, 'decay_mult': 2}]

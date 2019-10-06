@@ -17,9 +17,9 @@
 
 import os
 
-trainList = open('tiered_train_CDANE.txt').readlines()
-valList = open('tiered_val_CDANE.txt').readlines()
-f = open('tiered_trainval_feature.txt', 'w')
+trainList = open('mini_train_CDANE_fc_attention.txt').readlines()
+valList = open('mini_val_CDANE_fc_attention.txt').readlines()
+f = open('mini_trainval_feature_fc_attention.txt', 'w')
 
 for line in trainList:
     line = line.strip()
