@@ -189,8 +189,8 @@ def train(config):
         softmax_out = nn.Softmax(dim=1)(outputs)
         if config['method'] == 'CDAN+E':
             entropy = loss.Entropy(softmax_out)
-            transfer_loss = loss.CDAN([features, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer) \
-                            - 0.2 * loss.CDAN([pres, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer)
+            transfer_loss = loss.CDAN([features, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer)# \
+                           # - 0.2 * loss.CDAN([pres, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer)
         elif config['method'] == 'CDAN':
             transfer_loss = loss.CDAN([features, softmax_out], ad_net, None, None, random_layer)
         elif config['method'] == 'DANN':

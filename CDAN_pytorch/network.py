@@ -570,14 +570,15 @@ class AdversarialNetwork(nn.Module):
         self.high = 1.0
         self.max_iter = 10000.0
 
-    def forward(self, x):
+    def forward(self, x, reverse=1):
         if self.training:
             self.iter_num += 1
         coeff = calc_coeff(
             self.iter_num, self.high, self.low, self.alpha, self.max_iter
         )
         x = x * 1.0
-        x.register_hook(grl_hook(coeff))
+        if reverse:
+            x.register_hook(grl_hook(coeff))
         x = self.ad_layer1(x)
         x = self.relu1(x)
         x = self.dropout1(x)

@@ -35,14 +35,18 @@ class learnedweight(nn.Module):
         super(learnedweight, self).__init__()
         self.fsl_weight = Parameter(torch.ones(1), requires_grad=True)
         self.da_weight = Parameter(torch.ones(1), requires_grad=True)
+        self.reverse_da_weight = Parameter(torch.ones(1), requires_grad=True)
 
-    def forward(self, fsl_loss, da_loss):
+    def forward(self, fsl_loss, da_loss, reverse_da_loss):
         final_loss = (
             self.fsl_weight
             + torch.exp(-1 * self.fsl_weight) * fsl_loss
             + self.da_weight
             + torch.exp(-1 * self.da_weight) * da_loss
+            + self.reverse_da_weight
+            + torch.exp(-1 * self.reverse_da_weight) * reverse_da_loss
         )
+        print(self.fsl_weight, self.da_weight, self.reverse_da_weight)
         return final_loss
 
 
@@ -337,8 +341,9 @@ def train(config):
                     entropy,
                     network.calc_coeff(i),
                     random_layer,
-                ) - 0.1 * loss.CDAN(
-                [pre, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer
+                )
+                reverse_transfer_loss = loss.CDAN_reverse(
+                    [pre, softmax_out], ad_net, None, None, random_layer
                 )
             elif config["method"] == "CDAN":
                 transfer_loss = loss.CDAN(
@@ -388,9 +393,10 @@ def train(config):
                     entropy,
                     network.calc_coeff(i),
                     random_layer,
-                ) - 0.1 * loss.CDAN(
-                [pre, softmax_out], ad_net, entropy, network.calc_coeff(i), random_layer
-            )
+                )
+                reverse_transfer_loss = loss.CDAN_reverse(
+                    [pre, softmax_out], ad_net, None, None, random_layer
+                )
             elif config["method"] == "CDAN":
                 transfer_loss = loss.CDAN(
                     [features, softmax_out], ad_net, None, None, random_layer
@@ -401,7 +407,7 @@ def train(config):
                 raise ValueError("Method cannot be recognized.")
 
         # total_loss = loss_params["trade_off"] * transfer_loss  + 0.2 * fsl_loss
-        total_loss = autoweight(fsl_loss, transfer_loss) / 10
+        total_loss = autoweight(fsl_loss, transfer_loss, reverse_transfer_loss)/10
         if i % 1 == 0:
             print(
                 "iter: ",
