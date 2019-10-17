@@ -50,13 +50,14 @@ def grl_hook(coeff):
 
 def CDAN_reverse(input_list, ad_net, entropy=None, coeff=None, random_layer=None):
     softmax_output = input_list[1].detach()
-    feature = GradientReversalFunction.apply(input_list[0], 1)
+    #feature = GradientReversalFunction.apply(input_list[0], 1)
+    feature = input_list[0]
     if random_layer is None:
         op_out = torch.bmm(softmax_output.unsqueeze(2), feature.unsqueeze(1))
-        ad_out = ad_net(op_out.view(-1, softmax_output.size(1) * feature.size(1)))
+        ad_out = ad_net(op_out.view(-1, softmax_output.size(1) * feature.size(1)), reverse=0)
     else:
         random_out = random_layer.forward([feature, softmax_output])
-        ad_out = ad_net(random_out.view(-1, random_out.size(1)))
+        ad_out = ad_net(random_out.view(-1, random_out.size(1)), reverse=0)
     batch_size = softmax_output.size(0) // 2
     dc_target = torch.from_numpy(np.array([[1]] * batch_size + [[0]] * batch_size)).float().cuda()
     if entropy is not None:

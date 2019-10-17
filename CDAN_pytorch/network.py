@@ -308,7 +308,7 @@ class ResNetFc(nn.Module):
         x = self.feature_layers_2(x)
         x = x.view(x.size(0), -1)
         if self.use_bottleneck and self.new_cls:
-            transfer = self.transfer(x)
+            transfer = torch.sigmoid(self.transfer(x))
             bottleneck = self.bottleneck(x)
             bottleneck_new = self.bottleneck_new(bottleneck)
             y = self.fc(bottleneck_new * transfer)
